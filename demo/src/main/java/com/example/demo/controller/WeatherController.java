@@ -2,7 +2,9 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.WeatherResponse;
 import com.example.demo.service.WeatherService;
+import java.time.LocalDate;
 import java.util.Map;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,8 +21,11 @@ public class WeatherController {
 
     // 담당: 본인 (영건) — API 명세서 1번
     @GetMapping("/weather")
-    public ResponseEntity<Map<String, Object>> getWeather(@RequestParam("region_name") String regionName) {
-        WeatherResponse result = weatherService.getWeather(regionName);
+    public ResponseEntity<Map<String, Object>> getWeather(
+            @RequestParam("region_name") String regionName,
+            @RequestParam("start_date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("end_date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        WeatherResponse result = weatherService.getWeather(regionName, startDate, endDate);
         return ResponseEntity.ok(Map.of("success", true, "data", result));
     }
 }

@@ -1,4 +1,6 @@
 package com.example.demo.client;
 
-record ForecastEntry(double pop) {
+import java.util.List;
+
+public record ForecastEntry(long dt, MainInfo main, List<WeatherDescription> weather, double pop) {
 }
