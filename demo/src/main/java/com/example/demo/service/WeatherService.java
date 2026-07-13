@@ -4,17 +4,14 @@ import com.example.demo.client.ForecastEntry;
 import com.example.demo.client.ForecastResponse;
 import com.example.demo.client.GeocodingResult;
 import com.example.demo.client.OpenWeatherClient;
-import com.example.demo.dto.WeatherResponse;
+import com.example.demo.dto.WeatherInfo;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -31,7 +28,7 @@ public class WeatherService {
         this.openWeatherClient = openWeatherClient;
     }
 
-    public WeatherResponse getWeather(String regionName, LocalDate startDate, LocalDate endDate) {
+    public WeatherInfo getWeather(String regionName, LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
 
         String cacheKey = regionName + "|" + startDate + "|" + endDate;
@@ -56,7 +53,7 @@ public class WeatherService {
                     "예보 가능 범위(오늘부터 %d일 이내)를 벗어났습니다.".formatted(FORECAST_HORIZON_DAYS));
         }
 
-        WeatherResponse response = toResponse(regionName, startDate, endDate, entries);
+        WeatherInfo response = toWeatherInfo(entries);
         cache.put(cacheKey, new CacheEntry(response, Instant.now()));
         return response;
     }
@@ -75,35 +72,25 @@ public class WeatherService {
         return !entryDate.isBefore(startDate) && !entryDate.isAfter(endDate);
     }
 
-    private WeatherResponse toResponse(String regionName, LocalDate startDate, LocalDate endDate, List<ForecastEntry> entries) {
+    private WeatherInfo toWeatherInfo(List<ForecastEntry> entries) {
         double tempMin = entries.stream().mapToDouble(e -> e.main().tempMin()).min().orElseThrow();
         double tempMax = entries.stream().mapToDouble(e -> e.main().tempMax()).max().orElseThrow();
+        double avgFeelsLike = entries.stream().mapToDouble(e -> e.main().feelsLike()).average().orElseThrow();
         double maxPop = entries.stream().mapToDouble(ForecastEntry::pop).max().orElse(0.0);
 
-        return new WeatherResponse(
-                regionName,
-                startDate,
-                endDate,
-                mostFrequentDescription(entries),
-                (int) Math.round(tempMin),
-                (int) Math.round(tempMax),
-                (int) Math.round(maxPop * 100),
-                OffsetDateTime.now(KST)
+        return new WeatherInfo(
+                roundToOneDecimal(tempMin),
+                roundToOneDecimal(tempMax),
+                roundToOneDecimal(avgFeelsLike),
+                (int) Math.round(maxPop * 100)
         );
     }
 
-    // 여행 기간 전체를 대표하는 한 줄 요약을 위해, 구간 내 3시간 슬롯 중 가장 많이 등장한 날씨 설명을 사용한다.
-    private String mostFrequentDescription(List<ForecastEntry> entries) {
-        return entries.stream()
-                .map(e -> e.weather().isEmpty() ? "정보 없음" : e.weather().get(0).description())
-                .collect(Collectors.groupingBy(d -> d, LinkedHashMap::new, Collectors.counting()))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse("정보 없음");
+    private double roundToOneDecimal(double value) {
+        return Math.round(value * 10) / 10.0;
     }
 
-    private record CacheEntry(WeatherResponse response, Instant fetchedAt) {
+    private record CacheEntry(WeatherInfo response, Instant fetchedAt) {
         boolean isFresh() {
             return Instant.now().isBefore(fetchedAt.plus(CACHE_TTL));
         }
