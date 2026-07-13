@@ -2,8 +2,8 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.ApiError;
 import com.example.demo.dto.ApiErrorResponse;
-import com.example.demo.service.ChecklistNotFoundException;
-import com.example.demo.service.ItemNotFoundException;
+import com.example.demo.service.PackingItemNotFoundException;
+import com.example.demo.service.TripNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -13,18 +13,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ChecklistNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleChecklistNotFound(ChecklistNotFoundException e) {
-        String message = e.getMessage() != null ? e.getMessage() : "체크리스트를 찾을 수 없습니다.";
+    @ExceptionHandler(TripNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleTripNotFound(TripNotFoundException e) {
+        String message = e.getMessage() != null ? e.getMessage() : "여행 계획을 찾을 수 없습니다.";
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiErrorResponse(new ApiError("CHECKLIST_NOT_FOUND", message)));
+                .body(new ApiErrorResponse(new ApiError("TRIP_NOT_FOUND", message)));
     }
 
-    @ExceptionHandler(ItemNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleItemNotFound(ItemNotFoundException e) {
+    @ExceptionHandler(PackingItemNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handlePackingItemNotFound(PackingItemNotFoundException e) {
         String message = e.getMessage() != null ? e.getMessage() : "항목을 찾을 수 없습니다.";
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiErrorResponse(new ApiError("ITEM_NOT_FOUND", message)));
+                .body(new ApiErrorResponse(new ApiError("PACKING_ITEM_NOT_FOUND", message)));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

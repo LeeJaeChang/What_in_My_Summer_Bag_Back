@@ -1,7 +1,7 @@
 package com.example.demo.dto;
 
-public record ToggleChecklistItemResponse(
-        String checklistItemId,
+public record TogglePackingItemResponse(
+        Long packingItemId,
         boolean checked,
         int readinessPercent
 ) {
