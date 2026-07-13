@@ -1,0 +1,6 @@
+package com.example.demo.model;
+
+public class cc {
+    public String cc;
+    public String cc2;
+}
