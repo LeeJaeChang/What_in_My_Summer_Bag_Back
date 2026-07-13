@@ -2,23 +2,23 @@ package com.example.demo.controller;
 
 import com.example.demo.auth.AuthService;
 import com.example.demo.dto.CreateTripRequest;
-import com.example.demo.dto.TogglePackingItemRequest;
-import com.example.demo.dto.TogglePackingItemResponse;
-import com.example.demo.dto.TripResponse;
+import com.example.demo.dto.TripDetailResponse;
+import com.example.demo.dto.TripListResponse;
 import com.example.demo.service.TripService;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/v2/trips")
 public class TripController {
 
     private final TripService tripService;
@@ -29,35 +29,32 @@ public class TripController {
         this.authService = authService;
     }
 
-    // 여행 계획 생성 (준비물은 추후 AI가 생성 — 생성 시점엔 비어 있음)
-    @PostMapping("/trips")
-    public ResponseEntity<Map<String, Object>> createTrip(
+    // 3.1 새로 추천 받기 (날씨 조회 + AI 준비물 생성은 서비스 TODO)
+    @PostMapping
+    public ResponseEntity<TripDetailResponse> createTrip(
             @RequestHeader("Authorization") String authorization,
             @Valid @RequestBody CreateTripRequest request) {
         Long memberId = authService.resolveMemberId(authorization);
-        TripResponse result = tripService.createTrip(memberId, request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("success", true, "data", result));
+        TripDetailResponse result = tripService.createTrip(memberId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    // 여행 계획 + 준비물 조회
-    @GetMapping("/trips/{tripId}")
-    public ResponseEntity<Map<String, Object>> getTrip(
+    // 3.2 기존 추천 내용 보기 (목록)
+    @GetMapping
+    public ResponseEntity<TripListResponse> listTrips(
+            @RequestHeader("Authorization") String authorization,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Long memberId = authService.resolveMemberId(authorization);
+        return ResponseEntity.ok(tripService.listTrips(memberId, page, size));
+    }
+
+    // 3.3 Today's bag 상세 조회
+    @GetMapping("/{tripId}")
+    public ResponseEntity<TripDetailResponse> getTrip(
             @RequestHeader("Authorization") String authorization,
             @PathVariable Long tripId) {
         Long memberId = authService.resolveMemberId(authorization);
-        TripResponse result = tripService.getTrip(memberId, tripId);
-        return ResponseEntity.ok(Map.of("success", true, "data", result));
-    }
-
-    // 준비물 체크 토글
-    @PatchMapping("/packing-items/{packingItemId}")
-    public ResponseEntity<Map<String, Object>> toggleItem(
-            @RequestHeader("Authorization") String authorization,
-            @PathVariable Long packingItemId,
-            @RequestBody TogglePackingItemRequest request) {
-        Long memberId = authService.resolveMemberId(authorization);
-        TogglePackingItemResponse result = tripService.toggleItem(memberId, packingItemId, request.checked());
-        return ResponseEntity.ok(Map.of("success", true, "data", result));
+        return ResponseEntity.ok(tripService.getTrip(memberId, tripId));
     }
 }

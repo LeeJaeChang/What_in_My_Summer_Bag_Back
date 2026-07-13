@@ -1,9 +1,11 @@
 package com.example.demo.dto;
 
 public record PackingItemResponse(
-        Long packingItemId,
+        Long id,
         String name,
         String category,
-        boolean checked
+        String reason,
+        boolean checked,
+        Integer sortOrder
 ) {
 }
