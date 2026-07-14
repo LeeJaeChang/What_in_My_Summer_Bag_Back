@@ -29,13 +29,16 @@ public class TripService {
     private final TripRepository tripRepository;
     private final PackingItemRepository packingItemRepository;
     private final MemberRepository memberRepository;
+    private final WeatherService weatherService;
 
     public TripService(TripRepository tripRepository,
                        PackingItemRepository packingItemRepository,
-                       MemberRepository memberRepository) {
+                       MemberRepository memberRepository,
+                       WeatherService weatherService) {
         this.tripRepository = tripRepository;
         this.packingItemRepository = packingItemRepository;
         this.memberRepository = memberRepository;
+        this.weatherService = weatherService;
     }
 
     // POST /trips — 새로 추천 받기
@@ -49,9 +52,17 @@ public class TripService {
             trip.getActivities().add(new TripActivity(trip, activityType));
         }
 
-        // TODO(날씨 담당): destination + startDate~endDate로 날씨 API 조회 후 trip.applyWeather(...) 호출.
+        WeatherResponse weather = weatherService.getWeather(
+                request.destination(), request.startDate(), request.endDate());
+        trip.applyWeather(
+                weather.temperatureMin(),
+                weather.temperatureMax(),
+                weather.precipitationProbability(),
+                weather.temperaturePerceived(),
+                null);
+
         // TODO(AI 담당): 날씨 + 활동 프롬프트로 여행 Tip과 PackingItem 목록 생성 후 trip.getPackingItems()에 추가.
-        //   (지금은 Trip/TripActivity만 저장하고 날씨·준비물은 비워둔 껍데기)
+        //   (지금은 Trip/TripActivity + 날씨만 채우고 여행 Tip·준비물은 비워둔 껍데기)
 
         tripRepository.save(trip);
         return toDetail(trip);
