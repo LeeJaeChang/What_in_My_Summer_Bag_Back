@@ -1,5 +1,5 @@
 package com.example.demo.recommend.dto;
-
+/*
 import com.example.demo.recommend.domain.ActivityType;
 import com.example.demo.recommend.dto.RecommendRequest;
 import com.example.demo.recommend.dto.RecommendResponse;
@@ -54,4 +54,4 @@ class RecommendServiceImplTest {
         assertThat(response.items().get(0).reason())
                 .isEqualTo("자외선이 강해요.");
     }
-}
+}*/

@@ -1,14 +1,14 @@
 package com.example.demo.recommend.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public record WeatherSummaryResponse(
 
-        int temperature,
+        Double temperatureMin,
 
-        @JsonProperty("precipitation_probability")
-        int precipitationProbability,
+        Double temperatureMax,
 
-        String condition
+        Double temperaturePerceived,
+
+        Integer precipitationProbability
+
 ) {
 }

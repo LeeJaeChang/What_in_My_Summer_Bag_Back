@@ -1,16 +1,27 @@
 package com.example.demo.recommend.dto;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.example.demo.recommend.domain.ActivityType;
+
+import java.time.LocalDate;
 import java.util.List;
 
 public record RecommendResponse(
 
-        @JsonProperty("recommendation_id")
-        String recommendationId,
+        Long tripId,
 
-        @JsonProperty("weather_summary")
-        WeatherSummaryResponse weatherSummary,
+        String destination,
 
-        List<RecommendItemResponse> items
+        LocalDate startDate,
+
+        LocalDate endDate,
+
+        WeatherSummaryResponse weather,
+
+        List<ActivityType> activities,
+
+        String travelTip,
+
+        List<RecommendItemResponse> packingItems
+
 ) {
 }
