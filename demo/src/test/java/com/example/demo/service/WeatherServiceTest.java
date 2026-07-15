@@ -12,7 +12,9 @@ import com.example.demo.client.MainInfo;
 import com.example.demo.client.OpenWeatherClient;
 import com.example.demo.client.WeatherDescription;
 import com.example.demo.dto.WeatherResponse;
+import com.example.demo.entity.SupportedRegion;
 import com.example.demo.icon.TdsWeatherIcon;
+import com.example.demo.repository.SupportedRegionRepository;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -30,10 +32,16 @@ class WeatherServiceTest {
     @Mock
     private OpenWeatherClient openWeatherClient;
 
+    @Mock
+    private SupportedRegionRepository supportedRegionRepository;
+
     @Test
     void 강수확률이_가장_높은_시점의_condition으로_아이콘을_고른다() {
-        WeatherService weatherService = new WeatherService(openWeatherClient);
+        WeatherService weatherService = new WeatherService(openWeatherClient, supportedRegionRepository);
         LocalDate startDate = LocalDate.now(KST).plusDays(1);
+
+        when(supportedRegionRepository.findById("서울"))
+                .thenReturn(Optional.of(new SupportedRegion("서울", "Seoul,KR")));
 
         when(openWeatherClient.geocode(anyString()))
                 .thenReturn(Optional.of(new GeocodingResult("Seoul", 37.5665, 126.9780, "KR")));
@@ -51,8 +59,11 @@ class WeatherServiceTest {
 
     @Test
     void 정의되지_않은_condition_코드는_흐림으로_대체된다() {
-        WeatherService weatherService = new WeatherService(openWeatherClient);
+        WeatherService weatherService = new WeatherService(openWeatherClient, supportedRegionRepository);
         LocalDate startDate = LocalDate.now(KST).plusDays(1);
+
+        when(supportedRegionRepository.findById("서울"))
+                .thenReturn(Optional.of(new SupportedRegion("서울", "Seoul,KR")));
 
         when(openWeatherClient.geocode(anyString()))
                 .thenReturn(Optional.of(new GeocodingResult("Seoul", 37.5665, 126.9780, "KR")));
@@ -67,8 +78,11 @@ class WeatherServiceTest {
 
     @Test
     void 맑음_그룹_경계값_800은_CLEAR로_분류된다() {
-        WeatherService weatherService = new WeatherService(openWeatherClient);
+        WeatherService weatherService = new WeatherService(openWeatherClient, supportedRegionRepository);
         LocalDate startDate = LocalDate.now(KST).plusDays(1);
+
+        when(supportedRegionRepository.findById("서울"))
+                .thenReturn(Optional.of(new SupportedRegion("서울", "Seoul,KR")));
 
         when(openWeatherClient.geocode(anyString()))
                 .thenReturn(Optional.of(new GeocodingResult("Seoul", 37.5665, 126.9780, "KR")));
