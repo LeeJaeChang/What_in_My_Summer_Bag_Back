@@ -2,16 +2,15 @@ package com.example.demo.entity;
 
 /**
  * 준비물 분류. EnumType.STRING으로 저장하며 DB CHECK 제약값과 이름이 일치한다.
- *
- * TODO: 준비물은 추후 AI가 생성하므로, AI 출력 스펙이 확정되면 분류 값도 그에 맞춰 조정한다.
- * (지금은 일반적인 여행 준비물 카테고리로 임시 정의)
+ * TDS 준비물 아이콘 표(TdsPackingIcon)의 category 분류와 값을 맞춘다.
  */
 public enum PackingCategory {
-    CLOTHING,     // 의류
-    TOILETRIES,   // 세면/위생용품
-    ELECTRONICS,  // 전자기기
-    DOCUMENTS,    // 서류/증명
-    MEDICINE,     // 상비약
-    GEAR,         // 활동 장비
-    ETC           // 기타
+    SUN_PROTECTION,  // 자외선 차단 (선크림, 모자, 양산 등)
+    WATER,           // 물놀이 (수영복, 아쿠아슈즈, 비치용품 등)
+    CLOTHING,        // 의류
+    TOILETRIES,      // 세면/위생용품
+    HEALTH,          // 건강/상비약
+    ELECTRONICS,     // 전자기기
+    DOCUMENTS,       // 서류/증명
+    ETC              // 기타
 }

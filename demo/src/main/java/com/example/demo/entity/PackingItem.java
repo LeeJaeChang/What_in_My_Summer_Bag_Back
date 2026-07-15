@@ -40,6 +40,9 @@ public class PackingItem {
     @Column(name = "reason")
     private String reason;
 
+    @Column(name = "icon_key")
+    private String iconKey;
+
     @Column(name = "checked", nullable = false)
     private boolean checked = false;
 
@@ -49,11 +52,12 @@ public class PackingItem {
     protected PackingItem() {
     }
 
-    public PackingItem(Trip trip, String name, PackingCategory category, String reason, int sortOrder) {
+    public PackingItem(Trip trip, String name, PackingCategory category, String reason, String iconKey, int sortOrder) {
         this.trip = trip;
         this.name = name;
         this.category = category;
         this.reason = reason;
+        this.iconKey = iconKey;
         this.sortOrder = sortOrder;
     }
 
@@ -75,6 +79,14 @@ public class PackingItem {
 
     public String getReason() {
         return reason;
+    }
+
+    public String getIconKey() {
+        return iconKey;
+    }
+
+    public void setIconKey(String iconKey) {
+        this.iconKey = iconKey;
     }
 
     public boolean isChecked() {

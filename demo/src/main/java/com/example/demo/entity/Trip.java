@@ -44,6 +44,9 @@ public class Trip {
     @Column(name = "travel_tip")
     private String travelTip;
 
+    @Column(name = "weather_icon_key")
+    private String weatherIconKey;
+
     @Column(name = "temperature_min")
     private Double temperatureMin;
 
@@ -78,12 +81,13 @@ public class Trip {
 
     public void applyWeather(Double temperatureMin, Double temperatureMax,
                              Integer precipitationProbability, Double temperaturePerceived,
-                             String travelTip) {
+                             String travelTip, String weatherIconKey) {
         this.temperatureMin = temperatureMin;
         this.temperatureMax = temperatureMax;
         this.precipitationProbability = precipitationProbability;
         this.temperaturePerceived = temperaturePerceived;
         this.travelTip = travelTip;
+        this.weatherIconKey = weatherIconKey;
     }
 
     public Long getId() {
@@ -108,6 +112,14 @@ public class Trip {
 
     public String getTravelTip() {
         return travelTip;
+    }
+
+    public String getWeatherIconKey() {
+        return weatherIconKey;
+    }
+
+    public void setWeatherIconKey(String weatherIconKey) {
+        this.weatherIconKey = weatherIconKey;
     }
 
     public Double getTemperatureMin() {
