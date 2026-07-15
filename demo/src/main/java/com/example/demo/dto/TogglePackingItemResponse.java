@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
-public record ToggleChecklistItemRequest(
+public record TogglePackingItemResponse(
+        Long id,
         boolean checked
 ) {
 }

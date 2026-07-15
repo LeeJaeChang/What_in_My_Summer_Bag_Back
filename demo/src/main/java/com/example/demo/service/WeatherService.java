@@ -4,7 +4,6 @@ import com.example.demo.client.ForecastEntry;
 import com.example.demo.client.ForecastResponse;
 import com.example.demo.client.GeocodingResult;
 import com.example.demo.client.OpenWeatherClient;
-import com.example.demo.dto.WeatherInfo;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,7 +27,6 @@ public class WeatherService {
         this.openWeatherClient = openWeatherClient;
     }
 
-    public WeatherInfo getWeather(String regionName, LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
 
         String cacheKey = regionName + "|" + startDate + "|" + endDate;
@@ -53,7 +51,6 @@ public class WeatherService {
                     "예보 가능 범위(오늘부터 %d일 이내)를 벗어났습니다.".formatted(FORECAST_HORIZON_DAYS));
         }
 
-        WeatherInfo response = toWeatherInfo(entries);
         cache.put(cacheKey, new CacheEntry(response, Instant.now()));
         return response;
     }
@@ -72,17 +69,14 @@ public class WeatherService {
         return !entryDate.isBefore(startDate) && !entryDate.isAfter(endDate);
     }
 
-    private WeatherInfo toWeatherInfo(List<ForecastEntry> entries) {
         double tempMin = entries.stream().mapToDouble(e -> e.main().tempMin()).min().orElseThrow();
         double tempMax = entries.stream().mapToDouble(e -> e.main().tempMax()).max().orElseThrow();
         double avgFeelsLike = entries.stream().mapToDouble(e -> e.main().feelsLike()).average().orElseThrow();
         double maxPop = entries.stream().mapToDouble(ForecastEntry::pop).max().orElse(0.0);
 
-        return new WeatherInfo(
                 roundToOneDecimal(tempMin),
                 roundToOneDecimal(tempMax),
                 roundToOneDecimal(avgFeelsLike),
-                (int) Math.round(maxPop * 100)
         );
     }
 
@@ -90,7 +84,6 @@ public class WeatherService {
         return Math.round(value * 10) / 10.0;
     }
 
-    private record CacheEntry(WeatherInfo response, Instant fetchedAt) {
         boolean isFresh() {
             return Instant.now().isBefore(fetchedAt.plus(CACHE_TTL));
         }

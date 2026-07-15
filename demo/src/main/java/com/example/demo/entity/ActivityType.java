@@ -1,9 +1,15 @@
 package com.example.demo.entity;
 
 /**
- * 이름을 소문자로 둔 이유: JSON 바디("sea","camping"...)와 DB CHECK 제약값이 그대로 일치해서
- * Jackson/JPA 양쪽에서 별도 매핑 코드 없이 문자열이 그대로 통한다.
+ * 사용자가 여행에서 선택한 활동 종류.
+ * EnumType.STRING으로 저장하며, DB CHECK 제약값과 이름이 그대로 일치한다.
  */
 public enum ActivityType {
-    sea, camping, city, cafe
+    SEA,    // 수영 == 바다
+    CAMPING,     // 캠핑
+    HIKING,      // 등산
+    SIGHTSEEING, // 관광
+    SHOPPING,    // 쇼핑
+    FOOD_TOUR,   // 맛집 탐방
+    DRIVING     // 드라이브
 }

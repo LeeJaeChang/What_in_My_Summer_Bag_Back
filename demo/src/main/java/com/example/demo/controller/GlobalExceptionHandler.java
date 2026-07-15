@@ -3,11 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.ApiError;
 import com.example.demo.dto.ApiErrorResponse;
 import com.example.demo.service.ChecklistNotFoundException;
-import com.example.demo.service.InvalidDateRangeException;
-import com.example.demo.service.InvalidRegionException;
 import com.example.demo.service.ItemNotFoundException;
-import com.example.demo.service.UnsupportedDateRangeException;
-import com.example.demo.service.WeatherFetchFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,33 +32,5 @@ public class GlobalExceptionHandler {
         String message = e.getMessage() != null ? e.getMessage() : "권한이 없습니다.";
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(new ApiError("FORBIDDEN", message)));
-    }
-
-    @ExceptionHandler(InvalidRegionException.class)
-    public ResponseEntity<ApiErrorResponse> handleInvalidRegion(InvalidRegionException e) {
-        String message = e.getMessage() != null ? e.getMessage() : "잘못된 지역명입니다.";
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiErrorResponse(new ApiError("INVALID_REGION", message)));
-    }
-
-    @ExceptionHandler(WeatherFetchFailedException.class)
-    public ResponseEntity<ApiErrorResponse> handleWeatherFetchFailed(WeatherFetchFailedException e) {
-        String message = e.getMessage() != null ? e.getMessage() : "날씨 정보를 가져오지 못했습니다.";
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(new ApiErrorResponse(new ApiError("WEATHER_FETCH_FAILED", message)));
-    }
-
-    @ExceptionHandler(InvalidDateRangeException.class)
-    public ResponseEntity<ApiErrorResponse> handleInvalidDateRange(InvalidDateRangeException e) {
-        String message = e.getMessage() != null ? e.getMessage() : "잘못된 여행 날짜입니다.";
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiErrorResponse(new ApiError("INVALID_DATE_RANGE", message)));
-    }
-
-    @ExceptionHandler(UnsupportedDateRangeException.class)
-    public ResponseEntity<ApiErrorResponse> handleUnsupportedDateRange(UnsupportedDateRangeException e) {
-        String message = e.getMessage() != null ? e.getMessage() : "예보 가능 범위를 벗어났습니다.";
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiErrorResponse(new ApiError("UNSUPPORTED_DATE_RANGE", message)));
     }
 }
