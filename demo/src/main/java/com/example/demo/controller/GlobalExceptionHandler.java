@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.ErrorResponse;
 import com.example.demo.service.ForbiddenException;
 import com.example.demo.service.InvalidDateRangeException;
+import com.example.demo.service.InvalidQueryException;
 import com.example.demo.service.InvalidRegionException;
 import com.example.demo.service.MemberNotFoundException;
 import com.example.demo.service.PackingItemNotFoundException;
@@ -32,6 +33,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidRegionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidRegion(InvalidRegionException e) {
         return build(HttpStatus.BAD_REQUEST, "INVALID_REGION", e.getMessage(), "지원하지 않는 지역입니다.");
+    }
+
+    @ExceptionHandler(InvalidQueryException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQuery(InvalidQueryException e) {
+        return build(HttpStatus.BAD_REQUEST, "INVALID_QUERY", e.getMessage(), "검색어 형식이 올바르지 않습니다.");
     }
 
     @ExceptionHandler({InvalidDateRangeException.class, UnsupportedDateRangeException.class})
