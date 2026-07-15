@@ -41,6 +41,6 @@ CREATE TABLE packing_items (
     reason      VARCHAR(255),
     icon_key    VARCHAR(20),
     checked     BOOLEAN      NOT NULL DEFAULT false,
-    sort_order  SMALLINT     NOT NULL DEFAULT 0
+    sort_order  INTEGER      NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_packing_items_trip_id ON packing_items(trip_id);
