@@ -5,10 +5,12 @@ import com.example.demo.client.ForecastResponse;
 import com.example.demo.client.GeocodingResult;
 import com.example.demo.client.OpenWeatherClient;
 import com.example.demo.dto.WeatherResponse;
+import com.example.demo.icon.TdsWeatherIcon;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,13 +79,24 @@ public class WeatherService {
         double tempMax = entries.stream().mapToDouble(e -> e.main().tempMax()).max().orElseThrow();
         double avgFeelsLike = entries.stream().mapToDouble(e -> e.main().feelsLike()).average().orElseThrow();
         double maxPop = entries.stream().mapToDouble(ForecastEntry::pop).max().orElse(0.0);
+        String weatherIconKey = toWeatherIconKey(entries);
 
         return new WeatherResponse(
                 roundToOneDecimal(tempMin),
                 roundToOneDecimal(tempMax),
                 roundToOneDecimal(avgFeelsLike),
-                (int) Math.round(maxPop * 100)
+                (int) Math.round(maxPop * 100),
+                weatherIconKey
         );
+    }
+
+    // 강수확률이 가장 높은 시점의 condition을 대표값으로 삼는다 — 그 시점 날씨가 준비물 판단에 가장 중요하다.
+    private String toWeatherIconKey(List<ForecastEntry> entries) {
+        ForecastEntry worstEntry = entries.stream()
+                .max(Comparator.comparingDouble(ForecastEntry::pop))
+                .orElseThrow();
+        int conditionId = worstEntry.weather().get(0).id();
+        return TdsWeatherIcon.fromOwmCode(conditionId).assetKey();
     }
 
     private double roundToOneDecimal(double value) {

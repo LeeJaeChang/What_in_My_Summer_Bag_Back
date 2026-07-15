@@ -59,7 +59,8 @@ public class TripService {
                 weather.temperatureMax(),
                 weather.precipitationProbability(),
                 weather.temperaturePerceived(),
-                null);
+                null,
+                weather.weatherIconKey());
 
         // TODO(AI 담당): 날씨 + 활동 프롬프트로 여행 Tip과 PackingItem 목록 생성 후 trip.getPackingItems()에 추가.
         //   (지금은 Trip/TripActivity + 날씨만 채우고 여행 Tip·준비물은 비워둔 껍데기)
@@ -125,7 +126,8 @@ public class TripService {
                 trip.getTemperatureMin(),
                 trip.getTemperatureMax(),
                 trip.getTemperaturePerceived(),
-                trip.getPrecipitationProbability());
+                trip.getPrecipitationProbability(),
+                trip.getWeatherIconKey());
         List<String> activities = trip.getActivities().stream()
                 .map(a -> a.getActivityType().name())
                 .toList();
