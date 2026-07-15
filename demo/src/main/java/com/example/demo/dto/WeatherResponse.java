@@ -5,6 +5,7 @@ public record WeatherResponse(
         Double temperatureMin,
         Double temperatureMax,
         Double temperaturePerceived,
-        Integer precipitationProbability
+        Integer precipitationProbability,
+        String weatherIconKey
 ) {
 }
