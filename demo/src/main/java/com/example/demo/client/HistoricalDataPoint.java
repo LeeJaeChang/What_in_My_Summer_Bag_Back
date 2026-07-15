@@ -3,17 +3,12 @@ package com.example.demo.client;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
+// OWM One Call 4.0 1-day 타임라인의 하루치 레코드.
 public record HistoricalDataPoint(
         long dt,
-        double temp,
-        @JsonProperty("feels_like") double feelsLike,
+        HistoricalTemperature temp,
+        @JsonProperty("feels_like") HistoricalFeelsLike feelsLike,
         List<WeatherDescription> weather,
-        Precipitation rain,
-        Precipitation snow
+        double pop
 ) {
-    public double precipitationAmount() {
-        double rainAmount = rain != null && rain.oneHour() != null ? rain.oneHour() : 0.0;
-        double snowAmount = snow != null && snow.oneHour() != null ? snow.oneHour() : 0.0;
-        return rainAmount + snowAmount;
-    }
 }

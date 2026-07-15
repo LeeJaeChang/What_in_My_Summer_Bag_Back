@@ -11,10 +11,11 @@ import com.example.demo.client.ForecastEntry;
 import com.example.demo.client.ForecastResponse;
 import com.example.demo.client.GeocodingResult;
 import com.example.demo.client.HistoricalDataPoint;
+import com.example.demo.client.HistoricalFeelsLike;
+import com.example.demo.client.HistoricalTemperature;
 import com.example.demo.client.HistoricalWeatherResponse;
 import com.example.demo.client.MainInfo;
 import com.example.demo.client.OpenWeatherClient;
-import com.example.demo.client.Precipitation;
 import com.example.demo.client.WeatherDescription;
 import com.example.demo.dto.WeatherResponse;
 import com.example.demo.entity.SupportedRegion;
@@ -103,7 +104,7 @@ class WeatherServiceTest {
     }
 
     @Test
-    void 강수량이_가장_많은_날짜의_condition으로_아이콘을_고른다() {
+    void 강수확률이_가장_높은_날짜의_condition으로_아이콘을_고른다() {
         WeatherService weatherService = new WeatherService(openWeatherClient, supportedRegionRepository);
         LocalDate startDate = LocalDate.now(KST).plusDays(10);
         LocalDate endDate = startDate.plusDays(1);
@@ -113,17 +114,17 @@ class WeatherServiceTest {
         when(openWeatherClient.geocode(anyString()))
                 .thenReturn(Optional.of(new GeocodingResult("Seoul", 37.5665, 126.9780, "KR")));
         when(openWeatherClient.fetchHistoricalWeather(anyDouble(), anyDouble(), anyLong()))
-                .thenReturn(historicalResponse(800, 0.0))
-                .thenReturn(historicalResponse(500, 4.2));
+                .thenReturn(historicalResponse(800, 0.1))
+                .thenReturn(historicalResponse(500, 0.8));
 
         WeatherResponse response = weatherService.getLastYearWeather("서울", startDate, endDate);
 
         assertThat(response.weatherIconKey()).isEqualTo(TdsWeatherIcon.RAIN.assetKey());
-        assertThat(response.precipitationProbability()).isEqualTo(50);
+        assertThat(response.precipitationProbability()).isEqualTo(80);
     }
 
     @Test
-    void 기간_내_강수가_없으면_강수확률은_0이고_맑음_아이콘을_고른다() {
+    void 강수확률이_0이면_맑음_아이콘을_고른다() {
         WeatherService weatherService = new WeatherService(openWeatherClient, supportedRegionRepository);
         LocalDate startDate = LocalDate.now(KST).plusDays(10);
 
@@ -154,9 +155,9 @@ class WeatherServiceTest {
 
         weatherService.getLastYearWeather("서울", startDate, startDate);
 
-        ArgumentCaptor<Long> dtCaptor = ArgumentCaptor.forClass(Long.class);
-        verify(openWeatherClient).fetchHistoricalWeather(anyDouble(), anyDouble(), dtCaptor.capture());
-        LocalDate requestedDate = Instant.ofEpochSecond(dtCaptor.getValue()).atOffset(KST).toLocalDate();
+        ArgumentCaptor<Long> startCaptor = ArgumentCaptor.forClass(Long.class);
+        verify(openWeatherClient).fetchHistoricalWeather(anyDouble(), anyDouble(), startCaptor.capture());
+        LocalDate requestedDate = Instant.ofEpochSecond(startCaptor.getValue()).atOffset(KST).toLocalDate();
 
         assertThat(requestedDate).isEqualTo(startDate.minusYears(1));
     }
@@ -167,10 +168,11 @@ class WeatherServiceTest {
         return new ForecastEntry(dt, main, List.of(new WeatherDescription(conditionId, "desc")), pop);
     }
 
-    private HistoricalWeatherResponse historicalResponse(int conditionId, double rainAmount) {
-        Precipitation rain = rainAmount > 0 ? new Precipitation(rainAmount) : null;
+    private HistoricalWeatherResponse historicalResponse(int conditionId, double pop) {
+        HistoricalTemperature temp = new HistoricalTemperature(25.0, 22.0, 28.0, 20.0, 26.0, 21.0);
+        HistoricalFeelsLike feelsLike = new HistoricalFeelsLike(25.0, 20.0, 26.0, 21.0);
         HistoricalDataPoint point = new HistoricalDataPoint(
-                0L, 25.0, 26.0, List.of(new WeatherDescription(conditionId, "desc")), rain, null);
+                0L, temp, feelsLike, List.of(new WeatherDescription(conditionId, "desc")), pop);
         return new HistoricalWeatherResponse(37.5665, 126.9780, List.of(point));
     }
 }

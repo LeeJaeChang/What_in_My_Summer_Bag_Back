@@ -88,8 +88,8 @@ public class WeatherService {
     }
 
     private HistoricalDataPoint fetchHistoricalDataPoint(GeocodingResult location, LocalDate date) {
-        long dt = date.atTime(12, 0).atOffset(KST).toEpochSecond();
-        return openWeatherClient.fetchHistoricalWeather(location.lat(), location.lon(), dt).data().get(0);
+        long start = date.atTime(12, 0).atOffset(KST).toEpochSecond();
+        return openWeatherClient.fetchHistoricalWeather(location.lat(), location.lon(), start).data().get(0);
     }
 
     private GeocodingResult resolveLocation(String regionName) {
@@ -141,26 +141,25 @@ public class WeatherService {
     }
 
     private WeatherResponse toLastYearWeatherResponse(List<HistoricalDataPoint> points) {
-        double tempMin = points.stream().mapToDouble(HistoricalDataPoint::temp).min().orElseThrow();
-        double tempMax = points.stream().mapToDouble(HistoricalDataPoint::temp).max().orElseThrow();
-        double avgFeelsLike = points.stream().mapToDouble(HistoricalDataPoint::feelsLike).average().orElseThrow();
-        long daysWithPrecipitation = points.stream().filter(p -> p.precipitationAmount() > 0).count();
-        int precipitationProbability = (int) Math.round(100.0 * daysWithPrecipitation / points.size());
+        double tempMin = points.stream().mapToDouble(p -> p.temp().min()).min().orElseThrow();
+        double tempMax = points.stream().mapToDouble(p -> p.temp().max()).max().orElseThrow();
+        double avgFeelsLike = points.stream().mapToDouble(p -> p.feelsLike().day()).average().orElseThrow();
+        double maxPop = points.stream().mapToDouble(HistoricalDataPoint::pop).max().orElse(0.0);
         String weatherIconKey = toLastYearWeatherIconKey(points);
 
         return new WeatherResponse(
                 roundToOneDecimal(tempMin),
                 roundToOneDecimal(tempMax),
                 roundToOneDecimal(avgFeelsLike),
-                precipitationProbability,
+                (int) Math.round(maxPop * 100),
                 weatherIconKey
         );
     }
 
-    // 강수량이 가장 많았던 날의 condition을 대표값으로 삼는다 (getWeather의 '강수확률 최고 시점' 기준과 같은 취지).
+    // 강수확률이 가장 높았던 날의 condition을 대표값으로 삼는다 — getWeather()의 기준과 동일.
     private String toLastYearWeatherIconKey(List<HistoricalDataPoint> points) {
         HistoricalDataPoint representative = points.stream()
-                .max(Comparator.comparingDouble(HistoricalDataPoint::precipitationAmount))
+                .max(Comparator.comparingDouble(HistoricalDataPoint::pop))
                 .orElseThrow();
         int conditionId = representative.weather().get(0).id();
         return TdsWeatherIcon.fromOwmCode(conditionId).assetKey();
