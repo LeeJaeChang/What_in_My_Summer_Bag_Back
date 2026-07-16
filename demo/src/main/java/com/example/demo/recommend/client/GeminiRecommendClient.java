@@ -94,6 +94,7 @@ public class GeminiRecommendClient implements AiRecommendClient {
                     {
                       "name": "준비물 이름",
                       "category": "CLOTHING",
+                       "iconKey": "u1F9F4",
                       "reason": "추천 이유",
                       "sortOrder": 1
                     }

@@ -4,7 +4,7 @@ import com.example.demo.recommend.client.AiRecommendClient;
 import com.example.demo.recommend.client.WeatherClient;
 import com.example.demo.recommend.dto.*;
 import org.springframework.stereotype.Service;
-
+import com.example.demo.icon.TdsPackingIcon;
 import java.util.List;
 
 @Service
@@ -40,6 +40,7 @@ public class RecommendServiceImpl implements RecommendService {
                                 null,
                                 item.name(),
                                 item.category(),
+                                validateIconKey(item.iconKey()),
                                 item.reason(),
                                 false,
                                 item.sortOrder()
@@ -55,5 +56,10 @@ public class RecommendServiceImpl implements RecommendService {
                 aiResult.travelTip(),
                 packingItems
         );
+    }
+    private String validateIconKey(String iconKey) {
+        return TdsPackingIcon.isValid(iconKey)
+                ? iconKey
+                : "u1F4E6";
     }
 }

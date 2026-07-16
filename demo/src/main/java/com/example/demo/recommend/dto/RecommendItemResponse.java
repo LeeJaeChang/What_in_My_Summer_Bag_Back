@@ -5,15 +5,11 @@ import com.example.demo.recommend.domain.PackingCategory;
 public record RecommendItemResponse(
 
         Long id,
-
         String name,
-
         PackingCategory category,
-
+        String iconKey,
         String reason,
-
         boolean checked,
-
         Integer sortOrder
 
 ) {
