@@ -1,43 +1,42 @@
-현재까지 구현한 내용은 다음과 같습니다.
+## 로컬 개발 환경 세팅
+
+### 1. 준비물
+- JDK 17
+- 로컬 PostgreSQL (버전 무관, 개발용이면 최신 안정 버전 권장)
+
+### 2. 환경변수 설정
+
+민감한 값(DB 계정, API 키 등)은 Git에 올리지 않고 각자 로컬의 `.env` 파일로 관리한다.
+
+```bash
+cd demo
+cp .env.example .env
 ```
-RecommendRequest, RecommendResponse를 최종 API 구조에 맞게 수정
 
-여행지, 시작일, 종료일, 활동 목록을 요청값으로 받도록 변경
+`.env` 파일을 열어서 본인 로컬 값으로 채운다.
 
-날씨 응답 DTO와 준비물 응답 DTO 구성
+| 변수 | 설명 |
+| --- | --- |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | 로컬 PostgreSQL 접속 정보 |
+| `TOSS_CLIENT_ID`, `TOSS_CLIENT_SECRET` | 앱인토스(Toss) 연동 키 (지금은 스텁, 미사용) |
+| `OPENWEATHER_API_KEY` | [OpenWeatherMap](https://openweathermap.org/api) 발급 키 |
+| `AI_API_KEY` | AI 추천 기능용 API 키 |
 
-WeatherClient, AiRecommendClient를 분리해 외부 API 연동 구조 구성
+`.env`는 각자 컴퓨터에만 존재하며 Git에 커밋되지 않는다 (`.gitignore` 처리됨). 값이 서로 달라도 문제없다.
 
-Google AI Studio에서 Gemini API 키를 발급받아 실제 AI 연동
+### 3. 로컬 DB 생성
 
-Gemini Java SDK를 추가하고 GeminiRecommendClient 구현
+`.env`에 적은 `DB_NAME`으로 데이터베이스를 미리 만들어둬야 한다 (테이블/스키마는 Flyway가 앱 실행 시 자동 생성).
 
-여행 조건과 날씨 정보를 프롬프트로 만들어 Gemini에 전달
-
-Gemini가 여행 팁과 준비물 이름, 카테고리, 추천 이유, 정렬 순서를 JSON 형식으로 반환하도록 구현
-
-Gemini 응답 JSON을 Java DTO로 변환
-
-AI 응답 DTO를 최종 API 응답 DTO로 변환
-
-API 키는 코드가 아닌 IntelliJ 환경변수로 관리
-
-Postman에서 실제 Gemini 추천 응답 정상 동작 확인
+```bash
+psql -U postgres -h localhost -c "CREATE DATABASE summerbag;"
 ```
-현재 흐름은 다음과 같습니다.
+
+### 4. 실행
+
+```bash
+cd demo
+./gradlew bootRun
 ```
-여행 조건 입력
 
-→ 날씨 정보 조회
-
-→ 여행 조건과 날씨를 프롬프트로 생성
-
-→ Google AI Studio의 Gemini API 호출
-
-→ 여행 팁과 준비물 추천 JSON 수신
-
-→ Java DTO로 변환
-
-→ 최종 API 응답 반환
-```
-현재 날씨 정보는 MockWeatherClient의 임시 데이터를 사용하고 있습니다.
+정상 기동되면 `http://localhost:8080`에서 응답한다.
