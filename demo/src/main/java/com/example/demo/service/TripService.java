@@ -97,6 +97,17 @@ public class TripService {
         return new PackingItemListResponse(items);
     }
 
+    // GET /trips/{tripId}/packing-items/purchase-list — 구매할 목록(체크 안 된 준비물만)
+    @Transactional(readOnly = true)
+    public PackingItemListResponse getPurchaseList(Long memberId, Long tripId) {
+        loadOwnedTrip(memberId, tripId);
+        List<PackingItemResponse> items =
+                packingItemRepository.findByTripIdAndCheckedFalseOrderBySortOrderAsc(tripId).stream()
+                        .map(this::toItemResponse)
+                        .toList();
+        return new PackingItemListResponse(items);
+    }
+
     // PATCH /trips/{tripId}/packing-items/{itemId} — 체크/해제
     @Transactional
     public TogglePackingItemResponse toggleItem(Long memberId, Long tripId, Long itemId, boolean checked) {

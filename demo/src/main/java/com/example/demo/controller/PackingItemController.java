@@ -35,6 +35,15 @@ public class PackingItemController {
         return ResponseEntity.ok(tripService.getPackingItems(memberId, tripId));
     }
 
+    // 4.3 구매할 목록 조회 (구매하러 가기 → 준비되지 않은 물품만)
+    @GetMapping("/purchase-list")
+    public ResponseEntity<PackingItemListResponse> getPurchaseList(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable Long tripId) {
+        Long memberId = authService.resolveMemberId(authorization);
+        return ResponseEntity.ok(tripService.getPurchaseList(memberId, tripId));
+    }
+
     // 4.2 체크리스트 체크/해제
     @PatchMapping("/{itemId}")
     public ResponseEntity<TogglePackingItemResponse> toggleItem(
