@@ -3,20 +3,20 @@ package com.example.demo.auth;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.entity.Member;
 import com.example.demo.repository.MemberRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * TODO(재창): 실제 앱인토스 SDK 연동 + JWT 발급으로 교체 필요. 지금은 개발/테스트용 임시 구현이다.
+ * 개발/테스트용 임시 인증 구현(기본 활성). 실제 구현은 {@link TossAuthService}.
  *
- * 실제 흐름:
- * 1. login(tossToken): 토스 서버에 토큰 검증/사용자 조회 -> userKey 획득 -> members upsert -> 자체 JWT 발급
- * 2. resolveMemberId(header): 자체 발급 JWT를 검증해서 member_id 판별
- *    (클라이언트가 member_id를 직접 보내지 않게 하는 것이 핵심 보안 요구사항)
+ * 활성화: application.properties 의 auth.mode=stub (미설정 시 기본값). auth.mode=toss 로 바꾸면
+ * 실제 구현(TossAuthService)으로 교체된다. 두 구현이 동시에 빈으로 뜨지 않도록 조건부로 등록한다.
  *
  * 지금 스텁은 tossToken == tossUserKey(숫자)로 간주하고, accessToken도 그 값을 그대로 돌려준다.
  * 따라서 이후 요청은 "Authorization: Bearer {tossUserKey}"로 보내면 된다. 로컬 개발/연동 테스트용.
  */
 @Service
+@ConditionalOnProperty(name = "auth.mode", havingValue = "stub", matchIfMissing = true)
 public class StubAuthService implements AuthService {
 
     private final MemberRepository memberRepository;

@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.auth.UnauthorizedException;
 import com.example.demo.dto.ErrorResponse;
 import com.example.demo.service.ForbiddenException;
 import com.example.demo.service.InvalidDateRangeException;
@@ -23,6 +24,11 @@ public class GlobalExceptionHandler {
             PackingItemNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException e) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", e.getMessage(), "리소스를 찾을 수 없습니다.");
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException e) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage(), "인증에 실패했습니다.");
     }
 
     @ExceptionHandler(ForbiddenException.class)
