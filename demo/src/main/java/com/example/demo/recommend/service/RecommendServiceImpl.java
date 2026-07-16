@@ -9,7 +9,7 @@ import java.util.List;
 
 @Service
 public class RecommendServiceImpl implements RecommendService {
-
+    private static final String DEFAULT_ICON_KEY = "u1F4E6";
     private final AiRecommendClient aiRecommendClient;
     private final WeatherClient weatherClient;
 

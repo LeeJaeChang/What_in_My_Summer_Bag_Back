@@ -1,6 +1,6 @@
 package com.example.demo.recommend.dto;
 
-import com.example.demo.recommend.domain.ActivityType;
+import com.example.demo.entity.ActivityType;
 
 import java.time.LocalDate;
 import java.util.List;

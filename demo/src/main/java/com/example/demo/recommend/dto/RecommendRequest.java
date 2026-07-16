@@ -1,5 +1,5 @@
 package com.example.demo.recommend.dto;
-import com.example.demo.recommend.domain.ActivityType;
+import com.example.demo.entity.ActivityType;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

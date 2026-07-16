@@ -1,6 +1,6 @@
 package com.example.demo.recommend.dto;
 
-import com.example.demo.recommend.domain.PackingCategory;
+import com.example.demo.entity.PackingCategory;
 
 public record AiPackingItem(
 
