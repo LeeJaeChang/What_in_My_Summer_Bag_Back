@@ -144,7 +144,7 @@ public class WeatherService {
         double tempMin = points.stream().mapToDouble(p -> p.temp().min()).min().orElseThrow();
         double tempMax = points.stream().mapToDouble(p -> p.temp().max()).max().orElseThrow();
         double avgFeelsLike = points.stream().mapToDouble(p -> p.feelsLike().day()).average().orElseThrow();
-        double maxPop = points.stream().mapToDouble(HistoricalDataPoint::pop).max().orElse(0.0);
+        double maxPop = points.stream().mapToDouble(this::popOrZero).max().orElse(0.0);
         String weatherIconKey = toLastYearWeatherIconKey(points);
 
         return new WeatherResponse(
@@ -157,12 +157,17 @@ public class WeatherService {
     }
 
     // 강수확률이 가장 높았던 날의 condition을 대표값으로 삼는다 — getWeather()의 기준과 동일.
+    // weather가 아예 빠진 날짜는 대표값 후보에서 제외하고, 전부 빠져있으면 CLOUDY로 근사한다.
     private String toLastYearWeatherIconKey(List<HistoricalDataPoint> points) {
-        HistoricalDataPoint representative = points.stream()
-                .max(Comparator.comparingDouble(HistoricalDataPoint::pop))
-                .orElseThrow();
-        int conditionId = representative.weather().get(0).id();
-        return TdsWeatherIcon.fromOwmCode(conditionId).assetKey();
+        return points.stream()
+                .filter(p -> p.weather() != null && !p.weather().isEmpty())
+                .max(Comparator.comparingDouble(this::popOrZero))
+                .map(p -> TdsWeatherIcon.fromOwmCode(p.weather().get(0).id()).assetKey())
+                .orElse(TdsWeatherIcon.CLOUDY.assetKey());
+    }
+
+    private double popOrZero(HistoricalDataPoint point) {
+        return point.pop() != null ? point.pop() : 0.0;
     }
 
     private double roundToOneDecimal(double value) {
