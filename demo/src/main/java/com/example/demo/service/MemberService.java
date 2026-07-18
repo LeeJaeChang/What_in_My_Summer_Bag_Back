@@ -20,6 +20,6 @@ public class MemberService {
     public MemberResponse getMe(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException("존재하지 않는 member_id: " + memberId));
-        return new MemberResponse(member.getId(), member.getNickname(), member.getCreatedAt());
+        return new MemberResponse(member.getId(), member.getCreatedAt());
     }
 }

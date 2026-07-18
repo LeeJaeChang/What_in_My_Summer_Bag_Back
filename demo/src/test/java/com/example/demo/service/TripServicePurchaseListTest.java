@@ -93,7 +93,7 @@ class TripServicePurchaseListTest {
     }
 
     private Trip ownedTrip(long memberId, long tripId) {
-        Member member = new Member(1000L, "tester");
+        Member member = new Member(1000L);
         ReflectionTestUtils.setField(member, "id", memberId);
         Trip trip = new Trip(member, "제주", LocalDate.now(), LocalDate.now().plusDays(2));
         ReflectionTestUtils.setField(trip, "id", tripId);

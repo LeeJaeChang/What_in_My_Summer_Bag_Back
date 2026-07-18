@@ -1,5 +1,6 @@
 package com.example.demo.auth;
 
+import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.entity.Member;
 import com.example.demo.repository.MemberRepository;
@@ -12,8 +13,9 @@ import org.springframework.stereotype.Service;
  * 활성화: application.properties 의 auth.mode=stub (미설정 시 기본값). auth.mode=toss 로 바꾸면
  * 실제 구현(TossAuthService)으로 교체된다. 두 구현이 동시에 빈으로 뜨지 않도록 조건부로 등록한다.
  *
- * 지금 스텁은 tossToken == tossUserKey(숫자)로 간주하고, accessToken도 그 값을 그대로 돌려준다.
+ * 지금 스텁은 authorizationCode == tossUserKey(숫자)로 간주하고, accessToken도 그 값을 그대로 돌려준다.
  * 따라서 이후 요청은 "Authorization: Bearer {tossUserKey}"로 보내면 된다. 로컬 개발/연동 테스트용.
+ * referrer 는 스텁에선 사용하지 않는다(토스 호출이 없으므로).
  */
 @Service
 @ConditionalOnProperty(name = "auth.mode", havingValue = "stub", matchIfMissing = true)
@@ -26,19 +28,18 @@ public class StubAuthService implements AuthService {
     }
 
     @Override
-    public LoginResponse login(String tossToken) {
-        Long tossUserKey = parseTossUserKey(tossToken);
+    public LoginResponse login(LoginRequest request) {
+        Long tossUserKey = parseTossUserKey(request.authorizationCode());
 
-        // TODO: 토스 서버 검증으로 실제 nickname/userKey를 받아온다. 지금은 스텁.
+        // TODO: 토스 서버 검증으로 실제 userKey를 받아온다. 지금은 스텁.
         Member member = memberRepository.findByTossUserKey(tossUserKey).orElse(null);
         boolean isNewMember = member == null;
         if (isNewMember) {
-            member = memberRepository.save(new Member(tossUserKey, null));
+            member = memberRepository.save(new Member(tossUserKey));
         }
 
-        // TODO: 자체 JWT 발급으로 교체. 지금은 tossToken을 그대로 accessToken처럼 사용.
-        String accessToken = tossToken;
-        return new LoginResponse(member.getId(), member.getNickname(), accessToken, isNewMember);
+        // TODO: 자체 JWT 발급으로 교체. 지금은 authorizationCode를 그대로 accessToken처럼 사용.
+        return new LoginResponse(member.getId(), request.authorizationCode(), isNewMember);
     }
 
     @Override
@@ -53,14 +54,14 @@ public class StubAuthService implements AuthService {
         Long tossUserKey = parseTossUserKey(raw);
         return memberRepository.findByTossUserKey(tossUserKey)
                 .map(Member::getId)
-                .orElseGet(() -> memberRepository.save(new Member(tossUserKey, null)).getId());
+                .orElseGet(() -> memberRepository.save(new Member(tossUserKey)).getId());
     }
 
     private Long parseTossUserKey(String value) {
         try {
             return Long.parseLong(value.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("tossToken(스텁)은 숫자여야 합니다: " + value);
+            throw new IllegalArgumentException("authorizationCode(스텁)는 숫자여야 합니다: " + value);
         }
     }
 }

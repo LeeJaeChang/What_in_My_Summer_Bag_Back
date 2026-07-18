@@ -23,6 +23,6 @@ public class AuthController {
     // 1.1 토스 로그인 (최초 로그인 시 Member 자동 생성)
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request.tossToken()));
+        return ResponseEntity.ok(authService.login(request));
     }
 }

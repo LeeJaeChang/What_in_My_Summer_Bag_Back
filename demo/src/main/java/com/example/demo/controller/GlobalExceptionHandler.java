@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.auth.TossAuthException;
 import com.example.demo.auth.UnauthorizedException;
 import com.example.demo.dto.ErrorResponse;
 import com.example.demo.service.ForbiddenException;
@@ -13,6 +14,8 @@ import com.example.demo.service.UnsupportedDateRangeException;
 import com.example.demo.service.WeatherFetchFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -24,6 +27,23 @@ public class GlobalExceptionHandler {
             PackingItemNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException e) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", e.getMessage(), "리소스를 찾을 수 없습니다.");
+    }
+
+    // 토스 연동 실패는 클라이언트가 상황을 구분할 수 있도록 명세의 errorCode 를 그대로 내보낸다.
+    @ExceptionHandler(TossAuthException.class)
+    public ResponseEntity<ErrorResponse> handleTossAuth(TossAuthException e) {
+        return build(e.getStatus(), e.getErrorCode(), e.getMessage(), "토스 로그인에 실패했습니다.");
+    }
+
+    // @Valid 실패(authorizationCode/referrer 누락) → MISSING_PARAMETER
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MethodArgumentNotValidException e) {
+        String field = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(FieldError::getField)
+                .orElse(null);
+        String message = field == null ? null : "필수 파라미터가 없습니다: " + field;
+        return build(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", message, "필수 파라미터가 없습니다.");
     }
 
     @ExceptionHandler(UnauthorizedException.class)
