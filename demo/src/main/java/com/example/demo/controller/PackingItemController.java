@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.auth.AuthService;
 import com.example.demo.dto.PackingItemListResponse;
+import com.example.demo.dto.PurchaseLinkResponse;
 import com.example.demo.dto.PurchaseListResponse;
 import com.example.demo.dto.TogglePackingItemRequest;
 import com.example.demo.dto.TogglePackingItemResponse;
@@ -43,6 +44,16 @@ public class PackingItemController {
             @PathVariable Long tripId) {
         Long memberId = authService.resolveMemberId(authorization);
         return ResponseEntity.ok(tripService.getPurchaseList(memberId, tripId));
+    }
+
+    // 7. 항목별 구매 링크 조회 (구매하기 버튼 → 브랜드 2개 바텀시트)
+    @GetMapping("/{itemId}/purchase-links")
+    public ResponseEntity<PurchaseLinkResponse> getPurchaseLinks(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable Long tripId,
+            @PathVariable Long itemId) {
+        Long memberId = authService.resolveMemberId(authorization);
+        return ResponseEntity.ok(tripService.getPurchaseLinks(memberId, tripId, itemId));
     }
 
     // 4.2 체크리스트 체크/해제
