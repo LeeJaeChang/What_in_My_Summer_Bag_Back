@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.auth.AuthService;
 import com.example.demo.dto.PackingItemListResponse;
+import com.example.demo.dto.PurchaseListResponse;
 import com.example.demo.dto.TogglePackingItemRequest;
 import com.example.demo.dto.TogglePackingItemResponse;
 import com.example.demo.service.TripService;
@@ -37,7 +38,7 @@ public class PackingItemController {
 
     // 4.3 구매할 목록 조회 (구매하러 가기 → 준비되지 않은 물품만)
     @GetMapping("/purchase-list")
-    public ResponseEntity<PackingItemListResponse> getPurchaseList(
+    public ResponseEntity<PurchaseListResponse> getPurchaseList(
             @RequestHeader("Authorization") String authorization,
             @PathVariable Long tripId) {
         Long memberId = authService.resolveMemberId(authorization);

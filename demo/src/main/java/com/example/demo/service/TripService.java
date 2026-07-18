@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dto.CreateTripRequest;
 import com.example.demo.dto.PackingItemListResponse;
 import com.example.demo.dto.PackingItemResponse;
+import com.example.demo.dto.PurchaseItemResponse;
+import com.example.demo.dto.PurchaseListResponse;
 import com.example.demo.dto.TogglePackingItemResponse;
 import com.example.demo.dto.TripDetailResponse;
 import com.example.demo.dto.TripListResponse;
@@ -76,7 +78,8 @@ public class TripService {
                 memberId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         List<TripSummaryResponse> summaries = trips.getContent().stream()
                 .map(t -> new TripSummaryResponse(
-                        t.getId(), t.getDestination(), t.getStartDate(), t.getEndDate(), t.getCreatedAt()))
+                        t.getId(), t.getDestination(), t.getStartDate(), t.getEndDate(),
+                        t.getWeatherIconKey(), t.getCreatedAt()))
                 .toList();
         return new TripListResponse(summaries, trips.getTotalElements());
     }
@@ -99,13 +102,13 @@ public class TripService {
 
     // GET /trips/{tripId}/packing-items/purchase-list — 구매할 목록(체크 안 된 준비물만)
     @Transactional(readOnly = true)
-    public PackingItemListResponse getPurchaseList(Long memberId, Long tripId) {
-        loadOwnedTrip(memberId, tripId);
-        List<PackingItemResponse> items =
+    public PurchaseListResponse getPurchaseList(Long memberId, Long tripId) {
+        Trip trip = loadOwnedTrip(memberId, tripId);
+        List<PurchaseItemResponse> items =
                 packingItemRepository.findByTripIdAndCheckedFalseOrderBySortOrderAsc(tripId).stream()
-                        .map(this::toItemResponse)
+                        .map(this::toPurchaseItemResponse)
                         .toList();
-        return new PackingItemListResponse(items);
+        return new PurchaseListResponse(toWeather(trip), trip.getTravelTip(), items);
     }
 
     // PATCH /trips/{tripId}/packing-items/{itemId} — 체크/해제
@@ -133,12 +136,7 @@ public class TripService {
     }
 
     private TripDetailResponse toDetail(Trip trip) {
-        WeatherResponse weather = new WeatherResponse(
-                trip.getTemperatureMin(),
-                trip.getTemperatureMax(),
-                trip.getTemperaturePerceived(),
-                trip.getPrecipitationProbability(),
-                trip.getWeatherIconKey());
+        WeatherResponse weather = toWeather(trip);
         List<String> activities = trip.getActivities().stream()
                 .map(a -> a.getActivityType().name())
                 .toList();
@@ -162,7 +160,28 @@ public class TripService {
                 it.getName(),
                 it.getCategory() != null ? it.getCategory().name() : null,
                 it.getReason(),
+                it.getIconKey(),
                 it.isChecked(),
                 it.getSortOrder());
+    }
+
+    private WeatherResponse toWeather(Trip trip) {
+        return new WeatherResponse(
+                trip.getTemperatureMin(),
+                trip.getTemperatureMax(),
+                trip.getTemperaturePerceived(),
+                trip.getPrecipitationProbability(),
+                trip.getWeatherIconKey());
+    }
+
+    private PurchaseItemResponse toPurchaseItemResponse(PackingItem it) {
+        return new PurchaseItemResponse(
+                it.getId(),
+                it.getName(),
+                it.getCategory() != null ? it.getCategory().name() : null,
+                it.getReason(),
+                it.isChecked(),
+                it.getSortOrder(),
+                it.getSearchKeyword());
     }
 }

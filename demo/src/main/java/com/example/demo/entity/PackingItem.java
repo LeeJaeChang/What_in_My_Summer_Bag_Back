@@ -43,6 +43,10 @@ public class PackingItem {
     @Column(name = "icon_key")
     private String iconKey;
 
+    // product_links.search_keyword와 매핑되는 구매 링크 조회 키. AI 생성 시 함께 채운다.
+    @Column(name = "search_keyword")
+    private String searchKeyword;
+
     @Column(name = "checked", nullable = false)
     private boolean checked = false;
 
@@ -87,6 +91,14 @@ public class PackingItem {
 
     public void setIconKey(String iconKey) {
         this.iconKey = iconKey;
+    }
+
+    public String getSearchKeyword() {
+        return searchKeyword;
+    }
+
+    public void setSearchKeyword(String searchKeyword) {
+        this.searchKeyword = searchKeyword;
     }
 
     public boolean isChecked() {

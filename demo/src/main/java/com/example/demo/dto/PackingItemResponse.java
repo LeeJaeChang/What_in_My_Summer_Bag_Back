@@ -5,6 +5,7 @@ public record PackingItemResponse(
         String name,
         String category,
         String reason,
+        String iconKey,
         boolean checked,
         Integer sortOrder
 ) {

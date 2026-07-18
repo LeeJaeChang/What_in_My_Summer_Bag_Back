@@ -9,6 +9,7 @@ public record TripSummaryResponse(
         String destination,
         LocalDate startDate,
         LocalDate endDate,
+        String weatherIconKey,
         LocalDateTime createdAt
 ) {
 }

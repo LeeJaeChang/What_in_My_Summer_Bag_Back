@@ -38,9 +38,10 @@ CREATE TABLE packing_items (
     name        VARCHAR(100) NOT NULL,
     category    VARCHAR(20)  NOT NULL
         CHECK (category IN ('SUN_PROTECTION','WATER','CLOTHING','TOILETRIES','HEALTH','ELECTRONICS','DOCUMENTS','ETC')),
-    reason      VARCHAR(255),
-    icon_key    VARCHAR(20),
-    checked     BOOLEAN      NOT NULL DEFAULT false,
-    sort_order  INTEGER      NOT NULL DEFAULT 0
+    reason          VARCHAR(255),
+    icon_key        VARCHAR(20),
+    search_keyword  VARCHAR(100),
+    checked         BOOLEAN      NOT NULL DEFAULT false,
+    sort_order      INTEGER      NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_packing_items_trip_id ON packing_items(trip_id);
