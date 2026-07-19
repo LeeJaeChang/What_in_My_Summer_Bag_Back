@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.example.demo.keyword.SearchKeyword;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -97,7 +98,18 @@ public class PackingItem {
         return searchKeyword;
     }
 
+    /**
+     * 구매 링크 조회 키를 설정한다. SearchKeyword 카탈로그에 없는 값은 product_links와
+     * 조인되지 않아 링크가 비므로 거부한다. 링크를 붙일 수 없는 준비물은 null로 둔다
+     * (구매 목록 조회에서 자연스럽게 제외된다).
+     *
+     * LLM 응답을 저장할 때는 SearchKeyword.isValid로 먼저 걸러 유효하지 않은 값은
+     * null로 넘겨야 한다. 여기까지 잘못된 값이 오면 프롬프트/파싱 버그이므로 예외로 드러낸다.
+     */
     public void setSearchKeyword(String searchKeyword) {
+        if (searchKeyword != null && !SearchKeyword.isValid(searchKeyword)) {
+            throw new IllegalArgumentException("유효하지 않은 searchKeyword: " + searchKeyword);
+        }
         this.searchKeyword = searchKeyword;
     }
 

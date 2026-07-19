@@ -59,9 +59,9 @@ class TripServicePurchaseListTest {
         // 리포지토리 파생 쿼리가 이미 체크 안 된 항목만 정렬해서 돌려준다
         when(packingItemRepository.findByTripIdAndCheckedFalseOrderBySortOrderAsc(tripId))
                 .thenReturn(List.of(
-                        item(trip, "선글라스", 2, "선글라스"),
-                        item(trip, "아쿠아 슈즈", 4, "아쿠아슈즈"),
-                        item(trip, "기초 제품", 0, "기초화장품")));
+                        item(trip, "선크림", 2, "sunscreen"),
+                        item(trip, "아쿠아 슈즈", 4, "aqua shoes"),
+                        item(trip, "기초 제품", 0, "travel skincare set")));
 
         PurchaseListResponse response = tripService.getPurchaseList(memberId, tripId);
 
@@ -78,14 +78,14 @@ class TripServicePurchaseListTest {
         assertThat(response.activities()).containsExactly("SEA", "FOOD_TOUR");
         assertThat(response.items())
                 .extracting(PurchaseItemResponse::name)
-                .containsExactly("선글라스", "아쿠아 슈즈", "기초 제품");
+                .containsExactly("선크림", "아쿠아 슈즈", "기초 제품");
         assertThat(response.items())
                 .extracting(PurchaseItemResponse::checked)
                 .containsOnly(false);
         // 구매 링크 조회용 search_keyword가 항목별로 함께 내려간다
         assertThat(response.items())
                 .extracting(PurchaseItemResponse::searchKeyword)
-                .containsExactly("선글라스", "아쿠아슈즈", "기초화장품");
+                .containsExactly("sunscreen", "aqua shoes", "travel skincare set");
         // iconKey는 searchKeyword와 역할이 다른 별도 필드다
         assertThat(response.items())
                 .extracting(PurchaseItemResponse::iconKey)
@@ -120,27 +120,27 @@ class TripServicePurchaseListTest {
         long tripId = 10L;
         long itemId = 101L;
         Trip trip = ownedTrip(memberId, tripId);
-        PackingItem item = item(trip, "선글라스", 1, "sunglasses");
+        PackingItem item = item(trip, "선크림", 1, "sunscreen");
         ReflectionTestUtils.setField(item, "id", itemId);
 
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
         when(packingItemRepository.findById(itemId)).thenReturn(Optional.of(item));
-        when(productLinkRepository.findById("sunglasses")).thenReturn(Optional.of(new ProductLink(
-                "sunglasses",
-                "젠틀 몬스터", "https://shop.example.com/gm", "https://cdn.example.com/gm.png",
-                "셀린느", "https://shop.example.com/celine", "https://cdn.example.com/celine.png")));
+        when(productLinkRepository.findById("sunscreen")).thenReturn(Optional.of(new ProductLink(
+                "sunscreen",
+                "미샤 선크림", "https://shop.example.com/missha", "https://cdn.example.com/missha.png",
+                "에스쁘아 선크림", "https://shop.example.com/espoir", "https://cdn.example.com/espoir.png")));
 
         PurchaseLinkResponse response = tripService.getPurchaseLinks(memberId, tripId, itemId);
 
         assertThat(response.itemId()).isEqualTo(itemId);
-        assertThat(response.itemName()).isEqualTo("선글라스");
-        assertThat(response.searchKeyword()).isEqualTo("sunglasses");
-        assertThat(response.title()).isEqualTo("선글라스");
-        assertThat(response.brand1Name()).isEqualTo("젠틀 몬스터");
-        assertThat(response.link1Url()).isEqualTo("https://shop.example.com/gm");
+        assertThat(response.itemName()).isEqualTo("선크림");
+        assertThat(response.searchKeyword()).isEqualTo("sunscreen");
+        assertThat(response.title()).isEqualTo("선크림");
+        assertThat(response.brand1Name()).isEqualTo("미샤 선크림");
+        assertThat(response.link1Url()).isEqualTo("https://shop.example.com/missha");
         // 매핑은 항상 2개라 2번 필드는 null이 되지 않는다
-        assertThat(response.brand2Name()).isEqualTo("셀린느");
-        assertThat(response.link2Image()).isEqualTo("https://cdn.example.com/celine.png");
+        assertThat(response.brand2Name()).isEqualTo("에스쁘아 선크림");
+        assertThat(response.link2Image()).isEqualTo("https://cdn.example.com/espoir.png");
     }
 
     @Test
@@ -153,13 +153,13 @@ class TripServicePurchaseListTest {
         long tripId = 10L;
         long itemId = 101L;
         Trip trip = ownedTrip(memberId, tripId);
-        PackingItem item = item(trip, "선글라스", 1, "sunglasses");
+        PackingItem item = item(trip, "선크림", 1, "sunscreen");
         ReflectionTestUtils.setField(item, "id", itemId);
 
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
         when(packingItemRepository.findById(itemId)).thenReturn(Optional.of(item));
-        // 시드가 비어 있는 현재 상태가 바로 이 케이스다
-        when(productLinkRepository.findById("sunglasses")).thenReturn(Optional.empty());
+        // 키워드는 유효하지만 아직 링크가 매핑되지 않은 경우
+        when(productLinkRepository.findById("sunscreen")).thenReturn(Optional.empty());
 
         org.assertj.core.api.Assertions
                 .assertThatThrownBy(() -> tripService.getPurchaseLinks(memberId, tripId, itemId))
@@ -177,7 +177,7 @@ class TripServicePurchaseListTest {
         long itemId = 101L;
         Trip trip = ownedTrip(memberId, tripId);
         Trip otherTrip = ownedTrip(memberId, 11L);
-        PackingItem item = item(otherTrip, "선글라스", 1, "sunglasses");
+        PackingItem item = item(otherTrip, "선크림", 1, "sunscreen");
         ReflectionTestUtils.setField(item, "id", itemId);
 
         when(tripRepository.findById(tripId)).thenReturn(Optional.of(trip));
