@@ -62,4 +62,28 @@ public class OpenWeatherClient {
             throw new WeatherFetchFailedException("예보 조회 실패", e);
         }
     }
+
+    // 과거 날씨 조회(One Call API 4.0, 1-day 타임라인). 무료 예보(2.5)와 별도로 "One Call by Call" 구독이 필요 —
+    // 미가입 상태로 호출하면 OWM이 401/403을 준다.
+    public HistoricalWeatherResponse fetchHistoricalWeather(double lat, double lon, long start) {
+        try {
+            HistoricalWeatherResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/data/4.0/onecall/timeline/1day")
+                            .queryParam("lat", lat)
+                            .queryParam("lon", lon)
+                            .queryParam("start", start)
+                            .queryParam("appid", apiKey)
+                            .queryParam("units", "metric")
+                            .queryParam("lang", "kr")
+                            .build())
+                    .retrieve()
+                    .body(HistoricalWeatherResponse.class);
+            if (response == null || response.data().isEmpty()) {
+                throw new WeatherFetchFailedException("과거 날씨 조회 실패");
+            }
+            return response;
+        } catch (RestClientException e) {
+            throw new WeatherFetchFailedException("과거 날씨 조회 실패", e);
+        }
+    }
 }

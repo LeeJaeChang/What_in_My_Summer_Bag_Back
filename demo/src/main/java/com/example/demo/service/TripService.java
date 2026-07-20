@@ -60,8 +60,15 @@ public class TripService {
             trip.getActivities().add(new TripActivity(trip, activityType));
         }
 
-        WeatherResponse weather = weatherService.getWeather(
-                request.destination(), request.startDate(), request.endDate());
+        WeatherResponse weather;
+        try {
+            weather = weatherService.getWeather(
+                    request.destination(), request.startDate(), request.endDate());
+        } catch (UnsupportedDateRangeException e) {
+            // 예보 가능 범위(5일)를 벗어난 여행 — 작년 같은 기간의 실측 날씨로 근사한다.
+            weather = weatherService.getLastYearWeather(
+                    request.destination(), request.startDate(), request.endDate());
+        }
         trip.applyWeather(
                 weather.temperatureMin(),
                 weather.temperatureMax(),

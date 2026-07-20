@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.client.ForecastEntry;
 import com.example.demo.client.ForecastResponse;
 import com.example.demo.client.GeocodingResult;
+import com.example.demo.client.HistoricalDataPoint;
 import com.example.demo.client.OpenWeatherClient;
 import com.example.demo.dto.WeatherResponse;
 import com.example.demo.entity.SupportedRegion;
@@ -24,6 +25,7 @@ public class WeatherService {
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
     private static final ZoneOffset KST = ZoneOffset.ofHours(9);
     private static final int FORECAST_HORIZON_DAYS = 5;
+    private static final int HISTORICAL_YEARS_BACK = 1;
 
     private final OpenWeatherClient openWeatherClient;
     private final SupportedRegionRepository supportedRegionRepository;
@@ -44,12 +46,7 @@ public class WeatherService {
             return cached.response();
         }
 
-        String geocodingQuery = supportedRegionRepository.findById(regionName)
-                .map(SupportedRegion::getGeocodingQuery)
-                .orElseThrow(() -> new InvalidRegionException("지원하지 않는 지역명: " + regionName));
-
-        GeocodingResult location = openWeatherClient.geocode(geocodingQuery)
-                .orElseThrow(() -> new WeatherFetchFailedException("지역 좌표를 찾을 수 없습니다: " + regionName));
+        GeocodingResult location = resolveLocation(regionName);
 
         ForecastResponse forecast = openWeatherClient.fetchForecast(location.lat(), location.lon());
         List<ForecastEntry> entries = forecast.list().stream()
@@ -64,6 +61,44 @@ public class WeatherService {
         WeatherResponse response = toWeatherResponse(entries);
         cache.put(cacheKey, new CacheEntry(response, Instant.now()));
         return response;
+    }
+
+    // 예보 가능 범위(FORECAST_HORIZON_DAYS)를 벗어난 여행에 쓴다: 작년 같은 기간의 실측 날씨로 AI 추천을 근사한다.
+    public WeatherResponse getLastYearWeather(String regionName, LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new InvalidDateRangeException("종료일은 시작일보다 빠를 수 없습니다.");
+        }
+
+        String cacheKey = "lastYear|" + regionName + "|" + startDate + "|" + endDate;
+        CacheEntry cached = cache.get(cacheKey);
+        if (cached != null && cached.isFresh()) {
+            return cached.response();
+        }
+
+        GeocodingResult location = resolveLocation(regionName);
+
+        List<HistoricalDataPoint> points = startDate.datesUntil(endDate.plusDays(1))
+                .map(date -> date.minusYears(HISTORICAL_YEARS_BACK))
+                .map(lastYearDate -> fetchHistoricalDataPoint(location, lastYearDate))
+                .toList();
+
+        WeatherResponse response = toLastYearWeatherResponse(points);
+        cache.put(cacheKey, new CacheEntry(response, Instant.now()));
+        return response;
+    }
+
+    private HistoricalDataPoint fetchHistoricalDataPoint(GeocodingResult location, LocalDate date) {
+        long start = date.atTime(12, 0).atOffset(KST).toEpochSecond();
+        return openWeatherClient.fetchHistoricalWeather(location.lat(), location.lon(), start).data().get(0);
+    }
+
+    private GeocodingResult resolveLocation(String regionName) {
+        String geocodingQuery = supportedRegionRepository.findById(regionName)
+                .map(SupportedRegion::getGeocodingQuery)
+                .orElseThrow(() -> new InvalidRegionException("지원하지 않는 지역명: " + regionName));
+
+        return openWeatherClient.geocode(geocodingQuery)
+                .orElseThrow(() -> new WeatherFetchFailedException("지역 좌표를 찾을 수 없습니다: " + regionName));
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
@@ -103,6 +138,36 @@ public class WeatherService {
                 .orElseThrow();
         int conditionId = worstEntry.weather().get(0).id();
         return TdsWeatherIcon.fromOwmCode(conditionId).assetKey();
+    }
+
+    private WeatherResponse toLastYearWeatherResponse(List<HistoricalDataPoint> points) {
+        double tempMin = points.stream().mapToDouble(p -> p.temp().min()).min().orElseThrow();
+        double tempMax = points.stream().mapToDouble(p -> p.temp().max()).max().orElseThrow();
+        double avgFeelsLike = points.stream().mapToDouble(p -> p.feelsLike().day()).average().orElseThrow();
+        double maxPop = points.stream().mapToDouble(this::popOrZero).max().orElse(0.0);
+        String weatherIconKey = toLastYearWeatherIconKey(points);
+
+        return new WeatherResponse(
+                roundToOneDecimal(tempMin),
+                roundToOneDecimal(tempMax),
+                roundToOneDecimal(avgFeelsLike),
+                (int) Math.round(maxPop * 100),
+                weatherIconKey
+        );
+    }
+
+    // 강수확률이 가장 높았던 날의 condition을 대표값으로 삼는다 — getWeather()의 기준과 동일.
+    // weather가 아예 빠진 날짜는 대표값 후보에서 제외하고, 전부 빠져있으면 CLOUDY로 근사한다.
+    private String toLastYearWeatherIconKey(List<HistoricalDataPoint> points) {
+        return points.stream()
+                .filter(p -> p.weather() != null && !p.weather().isEmpty())
+                .max(Comparator.comparingDouble(this::popOrZero))
+                .map(p -> TdsWeatherIcon.fromOwmCode(p.weather().get(0).id()).assetKey())
+                .orElse(TdsWeatherIcon.CLOUDY.assetKey());
+    }
+
+    private double popOrZero(HistoricalDataPoint point) {
+        return point.pop() != null ? point.pop() : 0.0;
     }
 
     private double roundToOneDecimal(double value) {
