@@ -9,3 +9,5 @@
 /dataSources/
 /dataSources.local.xml
 /dataSources.xml
+# Machine-dependent Gradle JVM/settings
+/gradle.xml
