@@ -10,6 +10,8 @@ import com.example.demo.dto.TripDetailResponse;
 import com.example.demo.dto.WeatherResponse;
 import com.example.demo.entity.ActivityType;
 import com.example.demo.entity.Member;
+import com.example.demo.recommend.client.AiRecommendClient;
+import com.example.demo.recommend.dto.AiRecommendResult;
 import com.example.demo.repository.MemberRepository;
 import com.example.demo.repository.PackingItemRepository;
 import com.example.demo.repository.ProductLinkRepository;
@@ -24,6 +26,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class TripServiceTest {
+
+    // 이 테스트들은 날씨 조회 분기만 검증한다. AI 추천 내용은 TripServiceAiRecommendTest에서 다룬다.
+    private static final AiRecommendResult EMPTY_AI_RESULT =
+            new AiRecommendResult("여행 팁", List.of());
 
     @Mock
     private TripRepository tripRepository;
@@ -40,11 +46,14 @@ class TripServiceTest {
     @Mock
     private WeatherService weatherService;
 
+    @Mock
+    private AiRecommendClient aiRecommendClient;
+
     @Test
     void 예보_범위를_벗어나면_작년_날씨로_대체해서_여행을_생성한다() {
         TripService tripService =
                 new TripService(tripRepository, packingItemRepository, memberRepository,
-                        productLinkRepository, weatherService);
+                        productLinkRepository, weatherService, aiRecommendClient);
 
         Member member = new Member(123L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
@@ -58,6 +67,7 @@ class TripServiceTest {
         WeatherResponse lastYearWeather = new WeatherResponse(10.0, 18.0, 14.0, 30, "u1F327");
         when(weatherService.getLastYearWeather("서울", startDate, endDate))
                 .thenReturn(lastYearWeather);
+        when(aiRecommendClient.recommend(request, lastYearWeather)).thenReturn(EMPTY_AI_RESULT);
 
         TripDetailResponse response = tripService.createTrip(1L, request);
 
@@ -70,7 +80,7 @@ class TripServiceTest {
     void 예보_범위_이내면_작년_날씨를_조회하지_않는다() {
         TripService tripService =
                 new TripService(tripRepository, packingItemRepository, memberRepository,
-                        productLinkRepository, weatherService);
+                        productLinkRepository, weatherService, aiRecommendClient);
 
         Member member = new Member(123L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
@@ -81,6 +91,7 @@ class TripServiceTest {
 
         WeatherResponse forecastWeather = new WeatherResponse(20.0, 26.0, 24.0, 10, "u2600");
         when(weatherService.getWeather("서울", startDate, endDate)).thenReturn(forecastWeather);
+        when(aiRecommendClient.recommend(request, forecastWeather)).thenReturn(EMPTY_AI_RESULT);
 
         TripDetailResponse response = tripService.createTrip(1L, request);
 
