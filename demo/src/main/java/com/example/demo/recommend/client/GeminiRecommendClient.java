@@ -1,75 +1,146 @@
 package com.example.demo.recommend.client;
 
+import com.example.demo.dto.CreateTripRequest;
+import com.example.demo.dto.WeatherResponse;
+import com.example.demo.entity.PackingCategory;
+import com.example.demo.icon.TdsPackingIcon;
+import com.example.demo.keyword.SearchKeyword;
 import com.example.demo.recommend.dto.AiRecommendResult;
-import com.example.demo.recommend.dto.RecommendRequest;
-import com.example.demo.recommend.dto.WeatherSummaryResponse;
+import com.example.demo.service.AiRecommendFailedException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
+import java.util.List;
+import com.google.genai.types.Candidate;
+import com.google.genai.types.FinishReason;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.HttpOptions;
+import com.google.genai.types.HttpRetryOptions;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.ThinkingConfig;
+import com.google.genai.types.ThinkingLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "ai.mode", havingValue = "gemini", matchIfMissing = true)
 public class GeminiRecommendClient implements AiRecommendClient {
 
+    private static final Logger log = LoggerFactory.getLogger(GeminiRecommendClient.class);
+
     private static final String MODEL_NAME = "gemini-3.5-flash";
+
+    // 준비물 생성은 다단계 추론이 아니라 상식 + 조건분기(국내/해외·비자)라 thinking을 낮춘다.
+    // 실측상 MEDIUM(~20초) 대비 LOW(~11초)로 45% 빠르면서 조건 규칙 준수는 유지된다.
+    private static final ThinkingLevel.Known THINKING_LEVEL = ThinkingLevel.Known.LOW;
+
+    // 출력 토큰 한도. 준비물 8개 + 한국어 reason/travelTip 이면 넉넉히 이 값 안에 들어온다.
+    private static final int MAX_OUTPUT_TOKENS = 8192;
+
+    // 모델이 finishReason=STOP(정상 종료)으로 응답하고도 가끔 불완전한 JSON을 뱉는다(구조화 출력의
+    // 확률적 오류). 토큰 한도(MAX_TOKENS) 잘림과 달리 재호출하면 대부분 성공하므로, 파싱 실패에
+    // 한해 이 횟수만큼 재시도한다. API 실패(429/503/타임아웃)는 SDK HTTP 재시도가 따로 처리한다.
+    private static final int MAX_PARSE_ATTEMPTS = 3;
+
+    // SDK 기본 타임아웃은 0(=무제한)이라 Gemini가 응답을 늦게 주면 요청 스레드가 그대로 매달린다.
+    // OkHttp callTimeout(밀리초)에 적용되며 개별 호출 1건을 덮는다(파싱 재시도는 별개로 각각 이 한도).
+    // LOW thinking 정상 호출은 실측 10~18초라 30초면 넉넉하고, 이보다 늦으면 멈춘 것으로 보고 끊는다.
+    private static final int TIMEOUT_MILLIS = 30_000;
+
+    // SDK는 retryOptions 를 안 주면 기본값으로 RetryInterceptor 를 붙이는데, 기본 재시도 대상에
+    // 429 가 들어 있다(408/429/500/502/503/504, 5회). 무료 티어의 429는 '하루 20건' 소진이라
+    // 초 단위 재시도로 풀리지 않는데도 재시도가 각각 별도 요청으로 집계되어 할당량을 5배로 태운다.
+    // 그래서 재시도는 일시적 5xx 로만 좁히고 횟수도 줄인다.
+    private static final HttpRetryOptions RETRY_OPTIONS = HttpRetryOptions.builder()
+            .attempts(2)
+            .httpStatusCodes(List.of(500, 502, 503, 504))
+            .build();
 
     private final Client client;
     private final ObjectMapper objectMapper;
 
-    public GeminiRecommendClient(ObjectMapper objectMapper) {
-        this.client = new Client();
+    public GeminiRecommendClient(ObjectMapper objectMapper,
+                                 @Value("${gemini.api-key}") String apiKey) {
+        this.client = Client.builder().apiKey(apiKey).build();
         this.objectMapper = objectMapper;
     }
 
     @Override
     public AiRecommendResult recommend(
-            RecommendRequest request,
-            WeatherSummaryResponse weather
+            CreateTripRequest request,
+            WeatherResponse weather
     ) {
         String prompt = createPrompt(request, weather);
 
         GenerateContentConfig config =
                 GenerateContentConfig.builder()
                         .responseMimeType("application/json")
+                        .maxOutputTokens(MAX_OUTPUT_TOKENS)
+                        .thinkingConfig(ThinkingConfig.builder()
+                                .thinkingLevel(THINKING_LEVEL)
+                                .build())
+                        .httpOptions(HttpOptions.builder()
+                                .timeout(TIMEOUT_MILLIS)
+                                .retryOptions(RETRY_OPTIONS)
+                                .build())
                         .build();
 
-        GenerateContentResponse response =
-                client.models.generateContent(
-                        MODEL_NAME,
-                        prompt,
-                        config
-                );
+        JsonProcessingException lastParseError = null;
+        for (int attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
+            GenerateContentResponse response;
+            try {
+                response = client.models.generateContent(MODEL_NAME, prompt, config);
+            } catch (RuntimeException e) {
+                // 429(할당량 초과)/503(과부하)/타임아웃 등 Gemini 측 실패. 재시도로 풀릴 문제가 아니므로
+                // 즉시 종료한다(일시적 5xx 는 SDK HTTP 재시도가 이미 처리). 명세상 500 으로 내려간다.
+                throw new AiRecommendFailedException("Gemini 추천 호출에 실패했습니다.", e);
+            }
 
-        String responseText = response.text();
+            String finishReason = extractFinishReason(response);
+            String responseText = response.text();
 
-        if (responseText == null || responseText.isBlank()) {
-            throw new IllegalStateException(
-                    "Gemini 추천 응답이 비어 있습니다."
-            );
+            if (responseText == null || responseText.isBlank()) {
+                throw new AiRecommendFailedException(
+                        "Gemini 추천 응답이 비어 있습니다. (finishReason=" + finishReason + ")", null);
+            }
+
+            if (FinishReason.Known.MAX_TOKENS.name().equals(finishReason)) {
+                // 출력이 토큰 한도에서 잘렸다 — 재호출해도 같은 길이라 재시도 의미가 없다. 즉시 종료.
+                log.warn("Gemini 응답이 maxOutputTokens({})에서 잘림. 한도 상향 필요.", MAX_OUTPUT_TOKENS);
+                throw new AiRecommendFailedException(
+                        "Gemini 응답이 토큰 한도에서 잘렸습니다. (finishReason=MAX_TOKENS)", null);
+            }
+
+            try {
+                return objectMapper.readValue(responseText, AiRecommendResult.class);
+            } catch (JsonProcessingException e) {
+                // finishReason=STOP(정상 종료)인데도 JSON이 깨진 경우. 확률적 오류라 재호출하면 대부분 풀린다.
+                lastParseError = e;
+                log.warn("Gemini 응답 파싱 실패 ({}/{}). finishReason={}, 길이={}",
+                        attempt, MAX_PARSE_ATTEMPTS, finishReason, responseText.length());
+            }
         }
 
-        return parseResponse(responseText);
+        throw new AiRecommendFailedException(
+                "Gemini 응답을 변환할 수 없습니다. " + MAX_PARSE_ATTEMPTS + "회 시도 후에도 실패.",
+                lastParseError);
     }
 
-    private AiRecommendResult parseResponse(String responseText) {
-        try {
-            return objectMapper.readValue(
-                    responseText,
-                    AiRecommendResult.class
-            );
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(
-                    "Gemini 응답을 변환할 수 없습니다.",
-                    e
-            );
-        }
+    private String extractFinishReason(GenerateContentResponse response) {
+        return response.candidates()
+                .flatMap(list -> list.stream().findFirst())
+                .flatMap(Candidate::finishReason)
+                .map(FinishReason::knownEnum)
+                .map(Enum::name)
+                .orElse("UNKNOWN");
     }
 
     private String createPrompt(
-            RecommendRequest request,
-            WeatherSummaryResponse weather
+            CreateTripRequest request,
+            WeatherResponse weather
     ) {
         return """
 당신은 여행 준비물 추천 도우미입니다.
@@ -103,49 +174,10 @@ JSON 이외의 설명이나 마크다운은 작성하지 마세요.
 }
 
 searchKeyword 허용 목록:
-[
-  "sunscreen",
-  "sun hat",
-  "cooling arm sleeves",
-  "aloe vera gel",
-  "swimsuit",
-  "beach towel",
-  "waterproof phone pouch",
-  "aqua shoes",
-  "dry bag",
-  "snorkel set",
-  "socks",
-  "pajamas",
-  "sandals",
-  "lightweight summer top",
-  "lightweight summer pants",
-  "windbreaker jacket",
-  "travel toothbrush toiletry set",
-  "travel skincare set",
-  "shower head filter",
-  "portable bidet wipes",
-  "disposable toilet seat cover",
-  "travel laundry detergent sheets",
-  "bandages",
-  "waterproof antiseptic ointment",
-  "mosquito repellent spray",
-  "mosquito repellent patch",
-  "bed bug spray",
-  "phone charger cable",
-  "wireless earbuds",
-  "mini power bank",
-  "universal travel adapter",
-  "portable mini fan",
-  "3 in 1 charging cable",
-  "ziplock bags",
-  "umbrella parasol",
-  "packing cubes",
-  "travel neck pillow",
-  "sleep mask",
-  "luggage scale",
-  "phone lanyard strap",
-  "footrest hammock"
-]
+%s
+
+iconKey 허용 목록(카테고리별 "키 = 해당 준비물"):
+%s
 
 규칙:
 
@@ -154,9 +186,8 @@ searchKeyword 허용 목록:
 3. 추천 이유는 날씨 또는 활동과 연결해서 작성하세요.
 4. sortOrder는 1부터 순서대로 부여하세요.
 5. travelTip과 reason은 한국어로 작성하세요.
-6. category는 아래 값 중 하나만 사용하세요.
-   CLOTHING, ELECTRONICS, TOILETRIES,
-   DOCUMENTS, MEDICINE, ETC
+6. category는 아래 값 중 하나만 그대로 사용하세요.
+   %s
 7. 여행지가 대한민국 국내 지역이면 국내 여행에 적합한 준비물을 중심으로 추천하세요.
 8. 국내 여행에는 여권, 비자, 해외용 변환 플러그, 해외 유심처럼 불필요한 해외여행 준비물을 추천하지 마세요.
 9. 여행지가 해외 지역이면 해외여행 준비물을 우선 고려하세요.
@@ -174,6 +205,10 @@ searchKeyword 허용 목록:
 20. searchKeyword에는 빈 문자열을 사용하지 마세요. 허용된 문자열 또는 null만 사용하세요.
 21. JSON을 출력하기 전에 모든 searchKeyword가 허용 목록에 정확히 포함되어 있는지 확인하세요.
 22. 허용 목록에 없는 searchKeyword가 생성되었다면 반드시 null로 변경하세요.
+23. iconKey는 반드시 위의 iconKey 허용 목록에 있는 키를 그대로 사용하세요.
+24. 준비물과 의미가 가장 가까운 아이콘을 고르고, 가능하면 그 준비물의 category와 같은
+    묶음에 있는 키를 사용하세요.
+25. 허용 목록에 없는 iconKey를 임의로 만들지 마세요. 적절한 아이콘이 없으면 u1F4E6 을 사용하세요.
     """
                 .formatted(
                 request.destination(),
@@ -183,7 +218,10 @@ searchKeyword 허용 목록:
                 weather.temperatureMin(),
                 weather.temperatureMax(),
                 weather.temperaturePerceived(),
-                weather.precipitationProbability()
+                weather.precipitationProbability(),
+                SearchKeyword.promptList(),
+                TdsPackingIcon.promptList(),
+                PackingCategory.promptList()
         );
     }
 }

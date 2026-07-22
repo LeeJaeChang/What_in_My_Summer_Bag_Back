@@ -47,11 +47,18 @@ public class StubAuthService implements AuthService {
         String raw = authorizationHeader == null
                 ? ""
                 : authorizationHeader.replaceFirst("^Bearer ", "").trim();
+        // 토큰 관련 실패는 401 이어야 한다(명세 기준). TossAuthService 와 동작을 맞춘다 —
+        // 스텁만 400 을 내면 프론트가 스텁으로 개발할 때 401 분기를 검증할 수 없다.
         if (raw.isBlank()) {
-            throw new IllegalArgumentException("Authorization 헤더가 없습니다.");
+            throw new UnauthorizedException("Authorization 헤더가 없습니다.");
         }
 
-        Long tossUserKey = parseTossUserKey(raw);
+        Long tossUserKey;
+        try {
+            tossUserKey = parseTossUserKey(raw);
+        } catch (IllegalArgumentException e) {
+            throw new UnauthorizedException("유효하지 않은 토큰입니다: " + raw, e);
+        }
         return memberRepository.findByTossUserKey(tossUserKey)
                 .map(Member::getId)
                 .orElseGet(() -> memberRepository.save(new Member(tossUserKey)).getId());

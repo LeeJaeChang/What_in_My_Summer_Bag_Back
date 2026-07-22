@@ -14,6 +14,7 @@ import com.example.demo.entity.PackingItem;
 import com.example.demo.entity.ProductLink;
 import com.example.demo.entity.Trip;
 import com.example.demo.entity.TripActivity;
+import com.example.demo.recommend.client.AiRecommendClient;
 import com.example.demo.repository.MemberRepository;
 import com.example.demo.repository.PackingItemRepository;
 import com.example.demo.repository.ProductLinkRepository;
@@ -45,11 +46,14 @@ class TripServicePurchaseListTest {
     @Mock
     private WeatherService weatherService;
 
+    @Mock
+    private AiRecommendClient aiRecommendClient;
+
     @Test
     void 구매할_목록은_체크되지_않은_준비물만_정렬순서대로_반환한다() {
         TripService tripService = new TripService(
                 tripRepository, packingItemRepository, memberRepository,
-                productLinkRepository, weatherService);
+                productLinkRepository, weatherService, aiRecommendClient);
 
         long memberId = 1L;
         long tripId = 10L;
@@ -96,7 +100,7 @@ class TripServicePurchaseListTest {
     void 다른_회원의_여행이면_구매할_목록을_조회할_수_없다() {
         TripService tripService = new TripService(
                 tripRepository, packingItemRepository, memberRepository,
-                productLinkRepository, weatherService);
+                productLinkRepository, weatherService, aiRecommendClient);
 
         long ownerId = 1L;
         long otherMemberId = 2L;
@@ -114,7 +118,7 @@ class TripServicePurchaseListTest {
     void 구매_링크는_항목의_search_keyword로_브랜드_2개를_반환한다() {
         TripService tripService = new TripService(
                 tripRepository, packingItemRepository, memberRepository,
-                productLinkRepository, weatherService);
+                productLinkRepository, weatherService, aiRecommendClient);
 
         long memberId = 1L;
         long tripId = 10L;
@@ -147,7 +151,7 @@ class TripServicePurchaseListTest {
     void 매핑된_상품_링크가_없으면_PURCHASE_LINK_NOT_FOUND() {
         TripService tripService = new TripService(
                 tripRepository, packingItemRepository, memberRepository,
-                productLinkRepository, weatherService);
+                productLinkRepository, weatherService, aiRecommendClient);
 
         long memberId = 1L;
         long tripId = 10L;
@@ -170,7 +174,7 @@ class TripServicePurchaseListTest {
     void 다른_여행의_항목이면_구매_링크를_조회할_수_없다() {
         TripService tripService = new TripService(
                 tripRepository, packingItemRepository, memberRepository,
-                productLinkRepository, weatherService);
+                productLinkRepository, weatherService, aiRecommendClient);
 
         long memberId = 1L;
         long tripId = 10L;

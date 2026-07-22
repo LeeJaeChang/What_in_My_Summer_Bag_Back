@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.auth.TossAuthException;
 import com.example.demo.auth.UnauthorizedException;
 import com.example.demo.dto.ErrorResponse;
+import com.example.demo.service.AiRecommendFailedException;
 import com.example.demo.service.ForbiddenException;
 import com.example.demo.service.InvalidDateRangeException;
 import com.example.demo.service.InvalidQueryException;
@@ -13,16 +14,22 @@ import com.example.demo.service.PurchaseLinkNotFoundException;
 import com.example.demo.service.TripNotFoundException;
 import com.example.demo.service.UnsupportedDateRangeException;
 import com.example.demo.service.WeatherFetchFailedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 // API 명세서 v2의 공통 에러 응답 포맷({ errorCode, message })을 그대로 맞춘다.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // 404 는 프론트가 코드로 분기하므로 리소스별 errorCode 를 그대로 내보낸다(명세 기준).
     @ExceptionHandler(TripNotFoundException.class)
@@ -64,6 +71,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", message, "필수 파라미터가 없습니다.");
     }
 
+    // Authorization 헤더 자체가 없으면 스프링이 MissingRequestHeaderException 을 던진다.
+    // 기본 처리(400 + 스프링 기본 포맷) 대신 명세의 401 + 공통 에러 포맷으로 내보낸다.
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(MissingRequestHeaderException e) {
+        if (!HttpHeaders.AUTHORIZATION.equalsIgnoreCase(e.getHeaderName())) {
+            return build(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER",
+                    "필수 헤더가 없습니다: " + e.getHeaderName(), "필수 헤더가 없습니다.");
+        }
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
+                "Authorization 헤더가 없습니다.", "인증에 실패했습니다.");
+    }
+
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException e) {
         return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage(), "인증에 실패했습니다.");
@@ -93,8 +112,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WeatherFetchFailedException.class)
     public ResponseEntity<ErrorResponse> handleWeatherFetchFailed(WeatherFetchFailedException e) {
         // 명세는 날씨 조회 실패를 500(서버 내부 오류)으로 규정한다.
+        // 500 은 응답 본문에 원인을 담지 않으므로 로그에는 스택트레이스까지 남긴다.
+        log.error("날씨 조회 실패", e);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "WEATHER_FETCH_FAILED", e.getMessage(),
                 "날씨 정보를 가져오지 못했습니다.");
+    }
+
+    @ExceptionHandler(AiRecommendFailedException.class)
+    public ResponseEntity<ErrorResponse> handleAiRecommendFailed(AiRecommendFailedException e) {
+        // 명세는 AI 생성 실패를 500(서버 내부 오류)으로 규정한다.
+        // 원인(429 할당량 초과 / 503 과부하 / 파싱 실패)은 응답에 안 나가므로 반드시 로그로 남긴다.
+        log.error("AI 추천 생성 실패", e);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "AI_RECOMMEND_FAILED", e.getMessage(),
+                "준비물 추천을 생성하지 못했습니다.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

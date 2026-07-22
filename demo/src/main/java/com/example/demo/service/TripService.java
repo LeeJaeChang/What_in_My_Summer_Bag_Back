@@ -13,10 +13,16 @@ import com.example.demo.dto.TripSummaryResponse;
 import com.example.demo.dto.WeatherResponse;
 import com.example.demo.entity.ActivityType;
 import com.example.demo.entity.Member;
+import com.example.demo.entity.PackingCategory;
 import com.example.demo.entity.PackingItem;
 import com.example.demo.entity.ProductLink;
 import com.example.demo.entity.Trip;
 import com.example.demo.entity.TripActivity;
+import com.example.demo.icon.TdsPackingIcon;
+import com.example.demo.keyword.SearchKeyword;
+import com.example.demo.recommend.client.AiRecommendClient;
+import com.example.demo.recommend.dto.AiPackingItem;
+import com.example.demo.recommend.dto.AiRecommendResult;
 import com.example.demo.repository.MemberRepository;
 import com.example.demo.repository.PackingItemRepository;
 import com.example.demo.repository.ProductLinkRepository;
@@ -31,22 +37,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TripService {
 
+    // 카탈로그에서 아이콘을 찾지 못한 준비물의 기본 아이콘(📦).
+    private static final String DEFAULT_ICON_KEY = "u1F4E6";
+
     private final TripRepository tripRepository;
     private final PackingItemRepository packingItemRepository;
     private final MemberRepository memberRepository;
     private final ProductLinkRepository productLinkRepository;
     private final WeatherService weatherService;
+    private final AiRecommendClient aiRecommendClient;
 
     public TripService(TripRepository tripRepository,
                        PackingItemRepository packingItemRepository,
                        MemberRepository memberRepository,
                        ProductLinkRepository productLinkRepository,
-                       WeatherService weatherService) {
+                       WeatherService weatherService,
+                       AiRecommendClient aiRecommendClient) {
         this.tripRepository = tripRepository;
         this.packingItemRepository = packingItemRepository;
         this.memberRepository = memberRepository;
         this.productLinkRepository = productLinkRepository;
         this.weatherService = weatherService;
+        this.aiRecommendClient = aiRecommendClient;
     }
 
     // POST /trips — 새로 추천 받기
@@ -69,16 +81,22 @@ public class TripService {
             weather = weatherService.getLastYearWeather(
                     request.destination(), request.startDate(), request.endDate());
         }
+        AiRecommendResult aiResult = aiRecommendClient.recommend(request, weather);
+
         trip.applyWeather(
                 weather.temperatureMin(),
                 weather.temperatureMax(),
                 weather.precipitationProbability(),
                 weather.temperaturePerceived(),
-                null,
+                aiResult.travelTip(),
                 weather.weatherIconKey());
 
-        // TODO(AI 담당): 날씨 + 활동 프롬프트로 여행 Tip과 PackingItem 목록 생성 후 trip.getPackingItems()에 추가.
-        //   (지금은 Trip/TripActivity + 날씨만 채우고 여행 Tip·준비물은 비워둔 껍데기)
+        // sortOrder는 AI 값을 믿지 않고 응답 순서대로 1부터 다시 부여한다(중복·누락 방지).
+        List<AiPackingItem> aiItems =
+                aiResult.packingItems() != null ? aiResult.packingItems() : List.of();
+        for (int i = 0; i < aiItems.size(); i++) {
+            trip.getPackingItems().add(toPackingItem(trip, aiItems.get(i), i + 1));
+        }
 
         tripRepository.save(trip);
         return toDetail(trip);
@@ -166,6 +184,34 @@ public class TripService {
                 link.getBrand2Name(),
                 link.getLink2Url(),
                 link.getLink2Image());
+    }
+
+    // AI 응답은 신뢰하지 않는다. category는 enum에 없으면 ETC, iconKey는 TDS 카탈로그에 없으면
+    // 준비물 이름으로 재추론, searchKeyword는 구매 링크가 없는 값이면 null로 떨어뜨린다.
+    // 어느 경우에도 여행 생성 자체를 실패시키지 않는다.
+    private PackingItem toPackingItem(Trip trip, AiPackingItem aiItem, int sortOrder) {
+        PackingItem item = new PackingItem(
+                trip,
+                aiItem.name(),
+                PackingCategory.from(aiItem.category()).orElse(PackingCategory.ETC),
+                aiItem.reason(),
+                resolveIconKey(aiItem),
+                sortOrder);
+        if (SearchKeyword.isValid(aiItem.searchKeyword())) {
+            item.setSearchKeyword(aiItem.searchKeyword());
+        }
+        return item;
+    }
+
+    // 프롬프트에 아이콘 카탈로그를 넣었으므로 보통은 AI 값이 그대로 유효하다.
+    // 그래도 어긋나면 같은 카탈로그의 label로 준비물 이름을 재추론하고, 그것도 실패하면 기본 아이콘(📦)이다.
+    private String resolveIconKey(AiPackingItem aiItem) {
+        if (TdsPackingIcon.isValid(aiItem.iconKey())) {
+            return aiItem.iconKey();
+        }
+        return TdsPackingIcon.findByItemName(aiItem.name())
+                .map(TdsPackingIcon::assetKey)
+                .orElse(DEFAULT_ICON_KEY);
     }
 
     private Trip loadOwnedTrip(Long memberId, Long tripId) {
