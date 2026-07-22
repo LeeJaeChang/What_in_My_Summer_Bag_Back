@@ -1,0 +1,24 @@
+# 시크릿/로컬 전용 — 절대 이미지에 넣지 않는다
+.env
+secrets/
+*.p12
+*.pfx
+*.key
+*.crt
+
+# 빌드 산출물/캐시(이미지 안에서 새로 빌드)
+build/
+.gradle/
+out/
+bin/
+
+# IDE/OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# 문서/git
+.git/
+HELP.md
+DEPLOY_RAILWAY.md
