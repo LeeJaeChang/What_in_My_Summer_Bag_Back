@@ -5,6 +5,13 @@ build/
 ### Env ###
 .env
 !gradle/wrapper/gradle-wrapper.jar
+
+### Secrets ###
+/secrets/
+*.p12
+*.pfx
+*.key
+*.crt
 !**/src/main/**/build/
 !**/src/test/**/build/
 
