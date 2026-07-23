@@ -27,7 +27,7 @@
 | # | Method | Path | 인증 | 설명 |
 |---|--------|------|:---:|------|
 | 1 | POST | `/api/v2/auth/login` | ✕ | 토스 로그인(인가코드 → accessToken) |
-| 2 | GET | `/api/v2/members/me` | ✓ | 내 정보 조회 |
+| 2 | GET | `/api/v2/members/me` | ✓ | 내 정보 조회**(프론트 구현 X)** |
 | 3 | GET | `/api/v2/regions` | ✕ | 지원 지역 목록/검색 |
 | 4 | POST | `/api/v2/trips` | ✓ | 여행 생성(+날씨+AI 준비물 추천) |
 | 5 | GET | `/api/v2/trips` | ✓ | 내 여행 목록 |
